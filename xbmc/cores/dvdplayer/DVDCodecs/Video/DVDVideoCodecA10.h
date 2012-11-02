@@ -175,8 +175,9 @@ private:
   //rendering
   bool                  m_hwrender;
   int                   m_hlayer;
+  CRect                 m_srcRect;
+  CRect                 m_dstRect;
   int                   m_prevnr; //last dvdplayer render
-  bool                  m_firstframe;
 
   int                   m_decnr;
   int                   m_lastnr; //last display nr

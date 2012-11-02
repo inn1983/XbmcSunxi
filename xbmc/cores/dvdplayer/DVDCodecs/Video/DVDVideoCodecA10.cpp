@@ -684,13 +684,14 @@ bool CDVDVideoCodecA10::disp_open()
     return false;
   }
 
-  m_firstframe = true;
-  m_prevnr     = -1;
+  memset(&m_srcRect, 0, sizeof(m_srcRect));
+  memset(&m_dstRect, 0, sizeof(m_dstRect));
 
-  m_decnr      = 0;
-  m_lastnr     = -1;
-  m_rdidx      = 0;
-  m_wridx      = 0;
+  m_prevnr = -1;
+  m_decnr  = 0;
+  m_lastnr = -1;
+  m_rdidx  = 0;
+  m_wridx  = 0;
 
   memset(&m_dispq, 0, sizeof(m_dispq));
 
@@ -773,6 +774,9 @@ void CDVDVideoCodecA10::RenderBuffer(A10VideoBuffer *buffer, CRect &srcRect, CRe
   __disp_colorkey_t   colorkey;
   int                 curnr;
 
+  if (!m_hcedarv)
+    return;
+
   if (buffer->decnr == m_prevnr)
     return;
 
@@ -785,7 +789,7 @@ void CDVDVideoCodecA10::RenderBuffer(A10VideoBuffer *buffer, CRect &srcRect, CRe
 
   frmbuf.id = buffer->decnr;
 
-  if (m_firstframe)
+  if ((m_srcRect != srcRect) || (m_dstRect != dstRect))
   {
     int screen_width, screen_height;
 
@@ -945,6 +949,9 @@ void CDVDVideoCodecA10::RenderBuffer(A10VideoBuffer *buffer, CRect &srcRect, CRe
     args[3] = 0;
     if (ioctl(m_hdisp, DISP_CMD_VIDEO_START, args))
       CLog::Log(LOGERROR, "A10: DISP_CMD_VIDEO_START failed.\n");
+
+    m_srcRect = srcRect;
+    m_dstRect = dstRect;
   }
 
   args[0] = m_scrid;
@@ -991,9 +998,8 @@ void CDVDVideoCodecA10::RenderBuffer(A10VideoBuffer *buffer, CRect &srcRect, CRe
     pthread_mutex_unlock(&m_dispq_mutex);
   }
 
-  m_lastnr     = curnr;
-  m_prevnr     = buffer->decnr;
-  m_firstframe = false;
+  m_lastnr = curnr;
+  m_prevnr = buffer->decnr;
 }
 
 void A10Render(A10VideoBuffer *buffer, CRect &srcRect, CRect &dstRect)
