@@ -32,6 +32,7 @@
 #include "guilib/GraphicContext.h"
 #include "BaseRenderer.h"
 #include "xbmc/cores/dvdplayer/DVDCodecs/Video/DVDVideoCodec.h"
+#include "xbmc/cores/dvdplayer/DVDCodecs/Video/DVDVideoCodecA10.h"
 
 class CRenderCapture;
 
@@ -41,7 +42,7 @@ namespace Shaders { class BaseVideoFilterShader; }
 
 typedef std::vector<int>     Features;
 
-#define NUM_BUFFERS 4
+#define NUM_BUFFERS 3
 
 
 #undef ALIGN
@@ -172,7 +173,6 @@ protected:
   CFrameBufferObject m_fbo;
 
   int m_iYV12RenderBuffer;
-  int m_NumYV12Buffers;
   int m_iLastRenderBuffer;
 
   bool m_bConfigured;
@@ -214,7 +214,7 @@ protected:
     YV12Image image;
     unsigned  flipindex; /* used to decide if this has been uploaded */
 
-    struct A10VideoBuffer *a10buffer;
+    A10VideoBuffer *a10buffer;
   };
 
   // YV12 decoder textures

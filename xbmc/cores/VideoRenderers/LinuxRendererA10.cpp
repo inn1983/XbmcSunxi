@@ -47,8 +47,6 @@
 #include "RenderFormats.h"
 #include "xbmc/Application.h"
 
-#include "DVDCodecs/Video/DVDVideoCodecA10.h"
-
 using namespace Shaders;
 
 CLinuxRendererA10::CLinuxRendererA10()
@@ -100,7 +98,6 @@ CLinuxRendererA10::~CLinuxRendererA10()
 
 void CLinuxRendererA10::ManageTextures()
 {
-  m_NumYV12Buffers = 2;
   //m_iYV12RenderBuffer = 0;
   return;
 }
@@ -114,7 +111,7 @@ bool CLinuxRendererA10::ValidateRenderTarget()
      // create the yuv textures
     LoadShaders();
 
-    for (int i = 0 ; i < m_NumYV12Buffers ; i++)
+    for (int i = 0 ; i < NUM_BUFFERS ; i++)
       (this->*m_textureCreate)(i);
 
     m_bValidated = true;
@@ -147,7 +144,7 @@ bool CLinuxRendererA10::Configure(unsigned int width, unsigned int height, unsig
   // frame is loaded after every call to Configure().
   m_bValidated = false;
 
-  for (int i = 0 ; i<m_NumYV12Buffers ; i++)
+  for (int i = 0 ; i< NUM_BUFFERS; i++)
     m_buffers[i].image.flags = 0;
 
   m_iLastRenderBuffer = -1;
@@ -167,7 +164,7 @@ bool CLinuxRendererA10::Configure(unsigned int width, unsigned int height, unsig
 
 int CLinuxRendererA10::NextYV12Texture()
 {
-  return (m_iYV12RenderBuffer + 1) % m_NumYV12Buffers;
+  return (m_iYV12RenderBuffer + 1) % NUM_BUFFERS;
 }
 
 int CLinuxRendererA10::GetImage(YV12Image *image, int source, bool readonly)
@@ -339,7 +336,7 @@ void CLinuxRendererA10::LoadPlane( YUVPLANE& plane, int type, unsigned flipindex
 
 void CLinuxRendererA10::Reset()
 {
-  for(int i=0; i<m_NumYV12Buffers; i++)
+  for(int i=0; i<NUM_BUFFERS; i++)
   {
     /* reset all image flags, this will cleanup textures later */
     m_buffers[i].image.flags = 0;
@@ -392,15 +389,15 @@ void CLinuxRendererA10::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
 
     if (clear)
     {
-    	g_graphicsContext.BeginPaint();
+      g_graphicsContext.BeginPaint();
 
-    	glEnable(GL_BLEND);
-    	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    	glClearColor(1.0/255, 2.0/255, 3.0/255, 0);
-    	glClear(GL_COLOR_BUFFER_BIT);
-    	glClearColor(0, 0, 0, 0);
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      glClearColor(1.0/255, 2.0/255, 3.0/255, 0);
+      glClear(GL_COLOR_BUFFER_BIT);
+      glClearColor(0, 0, 0, 0);
 
-    	g_graphicsContext.EndPaint();
+      g_graphicsContext.EndPaint();
     }
   }
 
@@ -410,11 +407,6 @@ void CLinuxRendererA10::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
   int index = m_iYV12RenderBuffer;
   YUVBUFFER& buf =  m_buffers[index];
 
-  if (!buf.fields[FIELD_FULL][0].id) return;
-
-  if (buf.image.flags==0)
-    return;
-
   if (m_renderMethod & RENDER_A10BUF)
   {
     A10Render(buf.a10buffer, m_sourceRect, m_destRect);
@@ -422,6 +414,8 @@ void CLinuxRendererA10::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     VerifyGLState();
     return;
   }
+
+  if (!buf.fields[FIELD_FULL][0].id || !buf.image.flags) return;
 
   ManageDisplay();
   ManageTextures();
@@ -476,7 +470,7 @@ void CLinuxRendererA10::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
 
 void CLinuxRendererA10::FlipPage(int source)
 {
-  if( source >= 0 && source < m_NumYV12Buffers )
+  if( source >= 0 && source < NUM_BUFFERS )
     m_iYV12RenderBuffer = source;
   else
     m_iYV12RenderBuffer = NextYV12Texture();
@@ -497,7 +491,6 @@ unsigned int CLinuxRendererA10::PreInit()
     m_resolution = RES_DESKTOP;
 
   m_iYV12RenderBuffer = 0;
-  m_NumYV12Buffers = 2;
 
   m_formats.push_back(RENDER_FMT_YUV420P);
   m_formats.push_back(RENDER_FMT_BYPASS);
@@ -621,7 +614,7 @@ void CLinuxRendererA10::LoadShaders(int field)
   }
 
   // Now that we now the render method, setup texture function handlers
-  if (m_format == RENDER_FMT_BYPASS)
+  if (m_format == RENDER_FMT_BYPASS || m_format == RENDER_FMT_A10BUF)
   {
     m_textureUpload = &CLinuxRendererA10::UploadBYPASSTexture;
     m_textureCreate = &CLinuxRendererA10::CreateBYPASSTexture;
@@ -1058,8 +1051,7 @@ void CLinuxRendererA10::UploadYV12Texture(int source)
   YUVFIELDS& fields =  buf.fields;
 
 
-  if (!(im->flags&IMAGE_FLAG_READY) || m_buffers[source].a10buffer
-     )
+  if (!(im->flags&IMAGE_FLAG_READY))
   {
     m_eventTexturesDone[source]->Set();
     return;
@@ -1165,7 +1157,7 @@ void CLinuxRendererA10::DeleteYV12Texture(int index)
   {
     if (im.plane[p])
     {
-      delete[] im.plane[p];
+      delete [] im.plane[p];
       im.plane[p] = NULL;
     }
   }
@@ -1192,7 +1184,7 @@ bool CLinuxRendererA10::CreateYV12Texture(int index)
   im.planesize[1] = im.stride[1] * ( im.height >> im.cshift_y );
   im.planesize[2] = im.stride[2] * ( im.height >> im.cshift_y );
 
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < MAX_PLANES; i++)
     im.plane[i] = new BYTE[im.planesize[i]];
 
   glEnable(m_textureTarget);
@@ -1265,7 +1257,7 @@ bool CLinuxRendererA10::CreateBYPASSTexture(int index)
 
 void CLinuxRendererA10::SetTextureFilter(GLenum method)
 {
-  for (int i = 0 ; i<m_NumYV12Buffers ; i++)
+  for (int i = 0 ; i<NUM_BUFFERS ; i++)
   {
     YUVFIELDS &fields = m_buffers[i].fields;
 
