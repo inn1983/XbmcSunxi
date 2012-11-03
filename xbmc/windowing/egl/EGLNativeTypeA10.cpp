@@ -25,67 +25,24 @@
 
 #if defined(ALLWINNERA10) && !defined(TARGET_ANDROID)
 #include <sys/ioctl.h>
-extern "C" {
-#include "drv_display_sun4i.h"
-}
+#include "cores/VideoRenderers/LinuxRendererA10.h"
 static fbdev_window g_fbwin;
 #endif
 
 CEGLNativeTypeA10::CEGLNativeTypeA10()
 {
 #if defined(ALLWINNERA10) && !defined(ANDROID)
-  int fd = open("/dev/disp", O_RDWR);
+  int width, height;
 
-  if (fd >= 0)
-  {
-    unsigned long       args[4] = { 0, 0, 0, 0 };
-    __disp_layer_info_t layera;
-
-    g_fbwin.width  = ioctl(fd, DISP_CMD_SCN_GET_WIDTH , args);
-    g_fbwin.height = ioctl(fd, DISP_CMD_SCN_GET_HEIGHT, args);
-
-    if ((g_fbwin.height > 720) && (getenv("A10AB") == NULL))
-    {
-      //set workmode scaler (system layer)
-      args[0] = 0;
-      args[1] = 0x64;
-      args[2] = (unsigned long) (&layera);
-      args[3] = 0;
-      ioctl(fd, DISP_CMD_LAYER_GET_PARA, args);
-      layera.mode = DISP_LAYER_WORK_MODE_SCALER;
-      args[0] = 0;
-      args[1] = 0x64;
-      args[2] = (unsigned long) (&layera);
-      args[3] = 0;
-      ioctl(fd, DISP_CMD_LAYER_SET_PARA, args);
-    }
-    else
-    {
-      //set workmode normal (system layer)
-      args[0] = 0;
-      args[1] = 0x64;
-      args[2] = (unsigned long) (&layera);
-      args[3] = 0;
-      ioctl(fd, DISP_CMD_LAYER_GET_PARA, args);
-      layera.mode = DISP_LAYER_WORK_MODE_NORMAL;
-      args[0] = 0;
-      args[1] = 0x64;
-      args[2] = (unsigned long) (&layera);
-      args[3] = 0;
-      ioctl(fd, DISP_CMD_LAYER_SET_PARA, args);
-
-    }
-    close(fd);
-  }
-  else {
-    fprintf(stderr, "can not open /dev/disp (errno=%d)!\n", errno);
-    CLog::Log(LOGERROR, "can not open /dev/disp (errno=%d)!\n", errno);
-  }
+  A10VLInit(width, height);
+  g_fbwin.width  = width;
+  g_fbwin.height = height;
 #endif
 }
 
 CEGLNativeTypeA10::~CEGLNativeTypeA10()
 {
+  A10VLExit();
 } 
 
 bool CEGLNativeTypeA10::CheckCompatibility()

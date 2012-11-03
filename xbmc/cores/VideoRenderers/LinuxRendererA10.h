@@ -2,7 +2,7 @@
 #define LinuxRendererA10_RENDERER
 
 /*
- *      Copyright (C) 2010-2012 Team XBMC
+ *      Copyright (C) 2010-2012 Team XBMC and others
  *      http://www.xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -33,6 +33,10 @@
 #include "BaseRenderer.h"
 #include "xbmc/cores/dvdplayer/DVDCodecs/Video/DVDVideoCodec.h"
 #include "xbmc/cores/dvdplayer/DVDCodecs/Video/DVDVideoCodecA10.h"
+
+extern "C" {
+#include <libcedarv.h>
+}
 
 class CRenderCapture;
 
@@ -104,6 +108,8 @@ enum RenderQuality
 
 class CEvent;
 
+struct A10VLQueueItem;
+
 class CLinuxRendererA10 : public CBaseRenderer
 {
 public:
@@ -139,7 +145,7 @@ public:
 
   virtual std::vector<ERenderFormat> SupportedFormats() { return m_formats; }
 
-  virtual void AddProcessor(struct A10VideoBuffer *pVidBuff);
+  virtual void AddProcessor(struct A10VLQueueItem *pVidBuff);
 
 protected:
   virtual void Render(DWORD flags, int index);
@@ -214,7 +220,7 @@ protected:
     YV12Image image;
     unsigned  flipindex; /* used to decide if this has been uploaded */
 
-    A10VideoBuffer *a10buffer;
+    A10VLQueueItem *a10buffer;
   };
 
   // YV12 decoder textures
@@ -255,5 +261,60 @@ inline int NP2( unsigned x )
     return ++x;
 }
 #endif
+
+/*
+ * Video layer functions
+ */
+
+extern "C" {
+#include <libcedarv.h>
+#include <drv_display_sun4i.h>
+#include <os_adapter.h>
+}
+
+#define DISPQS 10
+
+typedef void (*A10VLCALLBACK)(void *callbackpriv, void *pictpriv, cedarv_picture_t &pict); //cleanup function
+
+struct A10VLQueueItem
+{
+  int               decnr;
+  A10VLCALLBACK     callback;
+  void             *callbackpriv;
+  void             *pictpriv;
+  cedarv_picture_t  pict;
+};
+
+typedef struct
+{
+  int width_in;
+  int height_in;
+  int width_out;
+  int height_out;
+  u32 addr_y_in;
+  u32 addr_c_in;
+  u32 addr_y_out;
+  u32 addr_u_out;
+  u32 addr_v_out;
+} A10VLScalerParameter;
+
+bool A10VLInit(int &width, int &height);
+
+void A10VLExit();
+
+void A10VLHide();
+
+A10VLQueueItem *A10VLPutQueue(A10VLCALLBACK     callback,
+                              void             *callbackpriv,
+                              void             *pictpriv,
+                              cedarv_picture_t &pict);
+
+void A10VLFreeQueue();
+
+void A10VLDisplayQueueItem(A10VLQueueItem *pItem, CRect &srcRect, CRect &dstRect);
+
+int  A10VLDisplayPicture(cedarv_picture_t &pict, int refnr, CRect &srcRect, CRect &dstRect);
+
+bool A10VLPictureScaler(A10VLScalerParameter *para);
 
 #endif

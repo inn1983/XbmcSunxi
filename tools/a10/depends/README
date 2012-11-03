@@ -21,7 +21,6 @@ KNOWN PROBLEMS WITH HARDWARE RENDERING:
 KNOWN PROBLEMS WITH PVR:
 ========================
 
-- PVR only works with 720p and software rendering
 - only SD-TV tested (since i do not have DVB-S2 hardware)
 
 PLEASE REMEMBER: This is poc.
