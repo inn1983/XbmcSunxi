@@ -1571,6 +1571,9 @@ void A10VLHide()
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_LAYER_CLOSE, args);
   }
+
+  memset(&g_srcRect, 0, sizeof(g_srcRect));
+  memset(&g_dstRect, 0, sizeof(g_dstRect));
 }
 
 A10VLQueueItem *A10VLPutQueue(A10VLCALLBACK     callback,
