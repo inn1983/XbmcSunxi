@@ -1631,7 +1631,7 @@ void A10VLDisplayQueueItem(A10VLQueueItem *pItem, CRect &srcRect, CRect &dstRect
 
   pthread_mutex_lock(&g_dispq_mutex);
 
-  if (pItem->pict.id == -1 || g_lastnr == pItem->decnr)
+  if (!pItem || (pItem->pict.id == -1) || (g_lastnr == pItem->decnr))
   {
     pthread_mutex_unlock(&g_dispq_mutex);
     return;
