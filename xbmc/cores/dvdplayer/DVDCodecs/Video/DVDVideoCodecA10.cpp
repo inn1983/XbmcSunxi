@@ -40,7 +40,7 @@ static long g_cedaropen = 0;
 //#define A10ENABLE_MPEG4V3     //ok for divx3
 //#define A10ENABLE_DIVX4
 //#define A10ENABLE_DIVX5
-#define A10ENABLE_XVID          //mostly ok
+//#define A10ENABLE_XVID          //mostly ok
 
 /*
 TODO:- Finish adding MPEG4 codecs tags 
@@ -403,11 +403,11 @@ int CDVDVideoCodecA10::Decode(BYTE* pData, int iSize, double dts, double pts)
 
     // DvdPlayer is dropping/queueing more frames then libcedarv has
     // frame buffers. Free the decoder frame queue.
-    // The next few frames in the display queue will get overwritten,
+    // The next few frames in the display queue will get invalidated,
     // but better than stopping the flow.
     A10VLFreeQueue();
 
-    return VC_ERROR;
+    m_hcedarv->decode(m_hcedarv);
   }
 
   ret = m_hcedarv->display_request(m_hcedarv, &picture);
