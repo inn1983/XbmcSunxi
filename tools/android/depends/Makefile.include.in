@@ -26,9 +26,9 @@ endif
 PREFIX=$(XBMCPREFIX)/$(PLATFORM)
 NATIVEPREFIX=$(XBMCPREFIX)/$(NATIVEPLATFORM)
 
-PLATFORM_FLAGS=-DANDROID -Os
+PLATFORM_FLAGS=-DANDROID -DALLWINNERA10 -Os
 ifeq ($(PLATFORM),armeabi-v7a)
-  PLATFORM_FLAGS+=-march=armv7-a -mtune=cortex-a9 -mfloat-abi=softfp -mfpu=neon -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__
+  PLATFORM_FLAGS+=-march=armv7-a -mtune=cortex-a8 -mfloat-abi=softfp -mfpu=neon -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__
 endif
 
 ifeq ($(PLATFORM),x86)
@@ -73,7 +73,7 @@ ifneq ($(NATIVE_BUILD),1)
   export OBJDUMP=$(CROSSTOOLS)objdump
   export READELF=$(CROSSTOOLS)readelf
   export CFLAGS=$(CEDARINCLUDES) $(PLATFORM_FLAGS) -I$(PREFIX)/include -I$(PREFIX)/include/$(SDK_PLATFORM) -fexceptions
-  export LDFLAGS=$(CEDARLIBS) $(PLATFORM_FLAGS) -L$(PREFIX)/lib -L$(PREFIX)/lib/$(SDK_PLATFORM)
+  export LDFLAGS=$(PLATFORM_FLAGS) -L$(PREFIX)/lib -L$(PREFIX)/lib/$(SDK_PLATFORM)
   export CPPFLAGS=$(PLATFORM_FLAGS) -I$(PREFIX)/include -I$(PREFIX)/include/$(SDK_PLATFORM) -fexceptions
   export CXXFLAGS=$(CEDARINCLUDES) $(PLATFORM_FLAGS) -I$(PREFIX)/include -I$(PREFIX)/include/$(SDK_PLATFORM) -fexceptions -frtti
 

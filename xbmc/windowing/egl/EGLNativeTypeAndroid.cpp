@@ -24,13 +24,24 @@
 #include "guilib/gui3d.h"
 #if defined(TARGET_ANDROID)
 #include "android/activity/XBMCApp.h"
+#ifdef ALLWINNERA10
+#include "cores/VideoRenderers/LinuxRendererA10.h"
+#endif
 #endif
 CEGLNativeTypeAndroid::CEGLNativeTypeAndroid()
 {
+#if defined(ALLWINNERA10) && defined(TARGET_ANDROID)
+  int width, height;
+
+  A10VLInit(width, height);
+#endif
 }
 
 CEGLNativeTypeAndroid::~CEGLNativeTypeAndroid()
 {
+#if defined(ALLWINNERA10) && defined(TARGET_ANDROID)
+  A10VLExit();
+#endif
 } 
 
 bool CEGLNativeTypeAndroid::CheckCompatibility()

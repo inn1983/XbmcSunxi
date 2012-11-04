@@ -1413,7 +1413,8 @@ void CLinuxRendererA10::AddProcessor(struct A10VLQueueItem *buffer)
  */
 
 static int             g_hdisp = -1;
-static int             g_scrid = 0;
+static int             g_screenid = 0;
+static int             g_syslayer = 0x64;
 static int             g_hlayer = 0;
 static int             g_width;
 static int             g_height;
@@ -1441,7 +1442,7 @@ bool A10VLInit(int &width, int &height)
     return false;
   }
 
-  args[0] = g_scrid;
+  args[0] = g_screenid;
   args[1] = 0;
   args[2] = 0;
   args[3] = 0;
@@ -1451,14 +1452,14 @@ bool A10VLInit(int &width, int &height)
   if ((g_height > 720) && (getenv("A10AB") == NULL))
   {
     //set workmode scaler (system layer)
-    args[0] = g_scrid;
-    args[1] = 0x64;
+    args[0] = g_screenid;
+    args[1] = g_syslayer;
     args[2] = (unsigned long) (&layera);
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_LAYER_GET_PARA, args);
     layera.mode = DISP_LAYER_WORK_MODE_SCALER;
-    args[0] = g_scrid;
-    args[1] = 0x64;
+    args[0] = g_screenid;
+    args[1] = g_syslayer;
     args[2] = (unsigned long) (&layera);
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_LAYER_SET_PARA, args);
@@ -1466,14 +1467,24 @@ bool A10VLInit(int &width, int &height)
   else
   {
     //set workmode normal (system layer)
-    args[0] = g_scrid;
-    args[1] = 0x64;
+    args[0] = g_screenid;
+    args[1] = g_syslayer;
     args[2] = (unsigned long) (&layera);
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_LAYER_GET_PARA, args);
+    //source window information
+    layera.src_win.x      = 0;
+    layera.src_win.y      = 0;
+    layera.src_win.width  = g_width;
+    layera.src_win.height = g_height;
+    //screen window information
+    layera.scn_win.x      = 0;
+    layera.scn_win.y      = 0;
+    layera.scn_win.width  = g_width;
+    layera.scn_win.height = g_height;
     layera.mode = DISP_LAYER_WORK_MODE_NORMAL;
-    args[0] = g_scrid;
-    args[1] = 0x64;
+    args[0] = g_screenid;
+    args[1] = g_syslayer;
     args[2] = (unsigned long) (&layera);
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_LAYER_SET_PARA, args);
@@ -1483,14 +1494,14 @@ bool A10VLInit(int &width, int &height)
   for (i = 0x65; i <= 0x67; i++)
   {
     //release possibly lost allocated layers
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = i;
     args[2] = 0;
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_LAYER_RELEASE, args);
   }
 
-  args[0] = g_scrid;
+  args[0] = g_screenid;
   args[1] = DISP_LAYER_WORK_MODE_SCALER;
   args[2] = 0;
   args[3] = 0;
@@ -1523,21 +1534,21 @@ void A10VLExit()
   if (g_hlayer)
   {
     //stop video
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_VIDEO_STOP, args);
 
     //close layer
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_LAYER_CLOSE, args);
 
     //release layer
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
@@ -1558,14 +1569,14 @@ void A10VLHide()
   if (g_hlayer)
   {
     //stop video
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_VIDEO_STOP, args);
 
     //close layer
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
@@ -1685,13 +1696,13 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
     int screen_width, screen_height;
 
     //query screen dimensions
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = 0;
     args[2] = 0;
     args[3] = 0;
     screen_width = ioctl(g_hdisp, DISP_CMD_SCN_GET_WIDTH, args);
 
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = 0;
     args[2] = 0;
     args[3] = 0;
@@ -1753,7 +1764,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
       //in scaler mode.
     }
 
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = g_hlayer;
     args[2] = (unsigned long)&layera;
     args[3] = 0;
@@ -1761,7 +1772,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
       CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_SET_PARA failed.\n");
 
     //open layer
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
@@ -1769,7 +1780,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
       CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_OPEN failed.\n");
 
     //put behind system layer
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
@@ -1777,8 +1788,8 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
       CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_BOTTOM failed.\n");
 
     //turn off colorkey (system layer)
-    args[0] = g_scrid;
-    args[1] = 0x64;
+    args[0] = g_screenid;
+    args[1] = g_syslayer;
     args[2] = 0;
     args[3] = 0;
     if (ioctl(g_hdisp, DISP_CMD_LAYER_CK_OFF, args))
@@ -1799,7 +1810,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
       colorkey.green_match_rule = 2;
       colorkey.blue_match_rule  = 2;
 
-      args[0] = g_scrid;
+      args[0] = g_screenid;
       args[1] = (unsigned long)&colorkey;
       args[2] = 0;
       args[3] = 0;
@@ -1807,7 +1818,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
         CLog::Log(LOGERROR, "A10: DISP_CMD_SET_COLORKEY failed.\n");
 
       //turn on colorkey
-      args[0] = g_scrid;
+      args[0] = g_screenid;
       args[1] = g_hlayer;
       args[2] = 0;
       args[3] = 0;
@@ -1815,8 +1826,8 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
         CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_CK_ON failed.\n");
 
       //turn on global alpha (system layer)
-      args[0] = g_scrid;
-      args[1] = 0x64;
+      args[0] = g_screenid;
+      args[1] = g_syslayer;
       args[2] = 0;
       args[3] = 0;
       if (ioctl(g_hdisp, DISP_CMD_LAYER_ALPHA_ON, args))
@@ -1825,8 +1836,8 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
     else
     {
       //turn off global alpha (system layer)
-      args[0] = g_scrid;
-      args[1] = 0x64;
+      args[0] = g_screenid;
+      args[1] = g_syslayer;
       args[2] = 0;
       args[3] = 0;
       if (ioctl(g_hdisp, DISP_CMD_LAYER_ALPHA_OFF, args))
@@ -1834,7 +1845,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
     }
 
     //start video
-    args[0] = g_scrid;
+    args[0] = g_screenid;
     args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
@@ -1845,7 +1856,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
     g_dstRect = dstRect;
   }
 
-  args[0] = g_scrid;
+  args[0] = g_screenid;
   args[1] = g_hlayer;
   args[2] = (unsigned long)&frmbuf;
   args[3] = 0;
@@ -1854,7 +1865,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
 
   //CLog::Log(LOGDEBUG, "A10: render %d\n", buffer->picture.id);
 
-  args[0] = g_scrid;
+  args[0] = g_screenid;
   args[1] = g_hlayer;
   args[2] = 0;
   args[3] = 0;
@@ -1893,7 +1904,7 @@ bool A10VLPictureScaler(A10VLScalerParameter *para)
   scaler_para.output_fb.br_swap = 0;
   scaler_para.output_fb.cs_mode = DISP_YCC;
 
-  args[0] = g_scrid;
+  args[0] = g_screenid;
   args[1] = 0;
   args[2] = 0;
   args[3] = 0;
@@ -1904,13 +1915,13 @@ bool A10VLPictureScaler(A10VLScalerParameter *para)
     return false;
   }
 
-  args[0] = g_scrid;
+  args[0] = g_screenid;
   args[1] = hscaler;
   args[2] = (unsigned long) &scaler_para;
   args[3] = 0;
   ioctl(g_hdisp, DISP_CMD_SCALER_EXECUTE, (unsigned long) args);
 
-  args[0] = g_scrid;
+  args[0] = g_screenid;
   args[1] = hscaler;
   args[2] = 0;
   args[3] = 0;

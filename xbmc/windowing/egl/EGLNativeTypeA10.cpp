@@ -31,7 +31,7 @@ static fbdev_window g_fbwin;
 
 CEGLNativeTypeA10::CEGLNativeTypeA10()
 {
-#if defined(ALLWINNERA10) && !defined(ANDROID)
+#if defined(ALLWINNERA10) && !defined(TARGET_ANDROID)
   int width, height;
 
   A10VLInit(width, height);
@@ -42,7 +42,9 @@ CEGLNativeTypeA10::CEGLNativeTypeA10()
 
 CEGLNativeTypeA10::~CEGLNativeTypeA10()
 {
+#if defined(ALLWINNERA10) && !defined(TARGET_ANDROID)
   A10VLExit();
+#endif
 } 
 
 bool CEGLNativeTypeA10::CheckCompatibility()

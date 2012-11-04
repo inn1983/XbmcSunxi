@@ -89,7 +89,11 @@ bool CDVDVideoCodecA10::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   }
   else
   {
+#ifdef TARGET_ANDROID
+    m_hwrender = false;
+#else
     m_hwrender = getenv("A10HWR") != NULL;
+#endif
   }
 
   CLog::Log(LOGNOTICE, "A10: using %s rendering.\n", m_hwrender ? "hardware" : "software");
