@@ -986,7 +986,7 @@ bool CGUIMediaWindow::OnClick(int iItem)
     // execute the script
     CURL url(pItem->GetPath());
     AddonPtr addon;
-    if (CAddonMgr::Get().GetAddon(url.GetHostName(), addon))
+    if (CAddonMgr::Get().GetAddon(url.GetHostName(), addon, ADDON_SCRIPT))
     {
 #ifdef HAS_PYTHON
       if (!g_pythonParser.StopScript(addon->LibPath()))
@@ -1586,7 +1586,7 @@ bool CGUIMediaWindow::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
     {
       CURL plugin(m_vecItems->Get(itemNumber)->GetPath());
       ADDON::AddonPtr addon;
-      if (CAddonMgr::Get().GetAddon(plugin.GetHostName(), addon, ADDON_PLUGIN))
+      if (CAddonMgr::Get().GetAddon(plugin.GetHostName(), addon))
         if (CGUIDialogAddonSettings::ShowAndGetInput(addon))
           Refresh();
       return true;

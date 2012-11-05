@@ -1526,24 +1526,15 @@ void CVideoDatabase::AddCountryToMovie(int idMovie, int idCountry)
 bool CVideoDatabase::LoadVideoInfo(const CStdString& strFilenameAndPath, CVideoInfoTag& details)
 {
   if (GetMovieInfo(strFilenameAndPath, details))
-  {
-    CLog::Log(LOGDEBUG,"%s, got movie info!", __FUNCTION__);
-    CLog::Log(LOGDEBUG,"  Title = %s", details.m_strTitle.c_str());
-  }
-  else if (GetEpisodeInfo(strFilenameAndPath, details))
-  {
-    CLog::Log(LOGDEBUG,"%s, got episode info!", __FUNCTION__);
-    CLog::Log(LOGDEBUG,"  Title = %s", details.m_strTitle.c_str());
-  }
-  else if (GetMusicVideoInfo(strFilenameAndPath, details))
-  {
-    CLog::Log(LOGDEBUG,"%s, got music video info!", __FUNCTION__);
-    CLog::Log(LOGDEBUG,"  Title = %s", details.m_strTitle.c_str());
-  }
-  else if (GetFileInfo(strFilenameAndPath, details))
-    CLog::Log(LOGDEBUG,"%s, got file info!", __FUNCTION__);
+    return true;
+  if (GetEpisodeInfo(strFilenameAndPath, details))
+    return true;
+  if (GetMusicVideoInfo(strFilenameAndPath, details))
+    return true;
+  if (GetFileInfo(strFilenameAndPath, details))
+    return true;
 
-  return !details.IsEmpty();
+  return false;
 }
 
 bool CVideoDatabase::HasMovieInfo(const CStdString& strFilenameAndPath)
@@ -1849,7 +1840,7 @@ bool CVideoDatabase::GetFileInfo(const CStdString& strFilenameAndPath, CVideoInf
 
     CStdString sql = PrepareSQL("SELECT * FROM files "
                                 "JOIN path ON path.idPath = files.idPath "
-                                "JOIN bookmark ON bookmark.idFile = files.idFile AND bookmark.type = %i "
+                                "LEFT JOIN bookmark ON bookmark.idFile = files.idFile AND bookmark.type = %i "
                                 "WHERE files.idFile = %i", CBookmark::RESUME, idFile);
     if (!m_pDS->query(sql.c_str()))
       return false;
@@ -2034,7 +2025,7 @@ int CVideoDatabase::SetDetailsForMovie(const CStdString& strFilenameAndPath, con
   return -1;
 }
 
-int CVideoDatabase::SetDetailsForTvShow(const CStdString& strPath, const CVideoInfoTag& details, const map<string, string> &artwork, const map<int, string> &seasonArt, int idTvShow /*= -1 */)
+int CVideoDatabase::SetDetailsForTvShow(const CStdString& strPath, const CVideoInfoTag& details, const map<string, string> &artwork, const map<int, map<string, string> > &seasonArt, int idTvShow /*= -1 */)
 {
   try
   {
@@ -2095,11 +2086,11 @@ int CVideoDatabase::SetDetailsForTvShow(const CStdString& strPath, const CVideoI
     AddSeason(idTvShow, -1);
 
     SetArtForItem(idTvShow, "tvshow", artwork);
-    for (map<int, string>::const_iterator i = seasonArt.begin(); i != seasonArt.end(); ++i)
+    for (map<int, map<string, string> >::const_iterator i = seasonArt.begin(); i != seasonArt.end(); ++i)
     {
       int idSeason = AddSeason(idTvShow, i->first);
       if (idSeason > -1)
-        SetArtForItem(idSeason, "season", "thumb", i->second);
+        SetArtForItem(idSeason, "season", i->second);
     }
 
     // and insert the new row
@@ -3629,7 +3620,7 @@ string CVideoDatabase::GetArtForItem(int mediaId, const string &mediaType, const
   return GetSingleValue(query, m_pDS2);
 }
 
-bool CVideoDatabase::GetTvShowSeasonArt(int showId, map<int, string> &seasonArt)
+bool CVideoDatabase::GetTvShowSeasonArt(int showId, map<int, map<string, string> > &seasonArt)
 {
   try
   {
@@ -3649,7 +3640,11 @@ bool CVideoDatabase::GetTvShowSeasonArt(int showId, map<int, string> &seasonArt)
     m_pDS2->close();
 
     for (vector< pair<int,int> >::const_iterator i = seasons.begin(); i != seasons.end(); ++i)
-      seasonArt.insert(make_pair(i->second,GetArtForItem(i->first, "season", "thumb")));
+    {
+      map<string, string> art;
+      GetArtForItem(i->first, "season", art);
+      seasonArt.insert(make_pair(i->second,art));
+    }
     return true;
   }
   catch (...)
@@ -3871,6 +3866,17 @@ bool CVideoDatabase::ScraperInUse(const CStdString &scraperID) const
   }
   return false;
 }
+
+class CArtItem
+{
+public:
+  CArtItem() { art_id = 0; media_id = 0; };
+  int art_id;
+  string art_type;
+  string art_url;
+  int media_id;
+  string media_type;
+};
 
 bool CVideoDatabase::UpdateOldVersion(int iVersion)
 {
@@ -4123,6 +4129,61 @@ bool CVideoDatabase::UpdateOldVersion(int iVersion)
     m_pDS->close();
     for (vector< pair<int, string> >::iterator i = art.begin(); i != art.end(); ++i)
       m_pDS->exec(PrepareSQL("update art set url='%s' where art_id=%d", i->second.c_str(), i->first));
+  }
+  if (iVersion < 71)
+  { // update URL encoded paths
+    m_pDS->query("select idFile, strFilename from files");
+    vector< pair<int, string> > files;
+    while (!m_pDS->eof())
+    {
+      files.push_back(make_pair(m_pDS->fv(0).get_asInt(), m_pDS->fv(1).get_asString()));
+      m_pDS->next();
+    }
+    m_pDS->close();
+
+    for (vector< pair<int, string> >::iterator i = files.begin(); i != files.end(); ++i)
+    {
+      std::string filename = i->second;
+      bool update = URIUtils::UpdateUrlEncoding(filename) &&
+                    (!m_pDS->query(PrepareSQL("SELECT idFile FROM files WHERE strFilename = '%s'", i->second.c_str())) || m_pDS->num_rows() <= 0);
+      m_pDS->close();
+
+      if (update)
+        m_pDS->exec(PrepareSQL("UPDATE files SET strFilename='%s' WHERE idFile=%d", i->second.c_str(), i->first));
+    }
+  }
+  if (iVersion < 72)
+  { // Update thumb to poster or banner as applicable
+    CTextureDatabase db;
+    if (db.Open())
+    {
+      m_pDS->query("select art_id,url,media_id,media_type from art where type='thumb' and media_type in ('movie', 'musicvideo', 'tvshow', 'season', 'set')");
+      vector<CArtItem> art;
+      while (!m_pDS->eof())
+      {
+        CTextureDetails details;
+        if (db.GetCachedTexture(m_pDS->fv(1).get_asString(), details))
+        {
+          CArtItem item;
+          item.art_id = m_pDS->fv(0).get_asInt();
+          item.art_url = m_pDS->fv(1).get_asString();
+          item.art_type = CVideoInfoScanner::GetArtTypeFromSize(details.width, details.height);
+          item.media_id = m_pDS->fv(2).get_asInt();
+          item.media_type = m_pDS->fv(3).get_asString();
+          if (item.art_type != "thumb")
+            art.push_back(item);
+        }
+        m_pDS->next();
+      }
+      m_pDS->close();
+      for (vector<CArtItem>::iterator i = art.begin(); i != art.end(); ++i)
+      {
+        if (GetArtForItem(i->media_id, i->media_type, i->art_type).empty())
+          m_pDS->exec(PrepareSQL("update art set type='%s' where art_id=%d", i->art_type.c_str(), i->art_id));
+        else
+          m_pDS->exec(PrepareSQL("delete from art where art_id=%d", i->art_id));
+      }
+    }
   }
   // always recreate the view after any table change
   CreateViews();
@@ -8322,7 +8383,7 @@ void CVideoDatabase::ExportToXML(const CStdString &path, bool singleFiles /* = f
     {
       CVideoInfoTag tvshow = GetDetailsForTvShow(m_pDS, true);
 
-      map<int, string> seasonArt;
+      map<int, map<string, string> > seasonArt;
       GetTvShowSeasonArt(tvshow.m_iDbId, seasonArt);
 
       map<string, string> artwork;
@@ -8331,11 +8392,12 @@ void CVideoDatabase::ExportToXML(const CStdString &path, bool singleFiles /* = f
         TiXmlElement additionalNode("art");
         for (map<string, string>::const_iterator i = artwork.begin(); i != artwork.end(); ++i)
           XMLUtils::SetString(&additionalNode, i->first.c_str(), i->second);
-        for (map<int, string>::const_iterator i = seasonArt.begin(); i != seasonArt.end(); ++i)
+        for (map<int, map<string, string> >::const_iterator i = seasonArt.begin(); i != seasonArt.end(); ++i)
         {
           TiXmlElement seasonNode("season");
           seasonNode.SetAttribute("num", i->first);
-          XMLUtils::SetString(&seasonNode, "thumb", i->second);
+          for (map<string, string>::const_iterator j = i->second.begin(); j != i->second.end(); ++j)
+            XMLUtils::SetString(&seasonNode, j->first.c_str(), j->second);
           additionalNode.InsertEndChild(seasonNode);
         }
         tvshow.Save(pMain, "tvshow", true, &additionalNode);
@@ -8359,6 +8421,9 @@ void CVideoDatabase::ExportToXML(const CStdString &path, bool singleFiles /* = f
         }
       }
 
+      // tvshow paths can be multipaths, and writing to a multipath is indeterminate.
+      if (URIUtils::IsMultiPath(tvshow.m_strPath))
+        tvshow.m_strPath = CMultiPathDirectory::GetFirstPath(tvshow.m_strPath);
 
       CFileItem item(tvshow.m_strPath, true);
       if (singleFiles && CUtil::SupportsWriteFileOperations(tvshow.m_strPath))
@@ -8408,18 +8473,21 @@ void CVideoDatabase::ExportToXML(const CStdString &path, bool singleFiles /* = f
           ExportActorThumbs(actorsDir, tvshow, singleFiles, overwrite);
 
         // export season thumbs
-        for (map<int, string>::const_iterator i = seasonArt.begin(); i != seasonArt.end(); ++i)
+        for (map<int, map<string, string> >::const_iterator i = seasonArt.begin(); i != seasonArt.end(); ++i)
         {
-          CStdString seasonThumb;
+          string seasonThumb;
           if (i->first == -1)
             seasonThumb = "season-all";
           else if (i->first == 0)
             seasonThumb = "season-specials";
           else
-            seasonThumb.Format("season%02i", i->first);
-          CStdString savedThumb(item.GetLocalArt(seasonThumb, true));
-          if (!i->second.empty())
-            CTextureCache::Get().Export(i->second, savedThumb, overwrite);
+            seasonThumb = StringUtils::Format("season%02i", i->first);
+          for (map<string, string>::const_iterator j = i->second.begin(); j != i->second.end(); j++)
+          {
+            CStdString savedThumb(item.GetLocalArt(seasonThumb + "-" + j->first, true));
+            if (!i->second.empty())
+              CTextureCache::Get().Export(j->second, savedThumb, overwrite);
+          }
         }
       }
 

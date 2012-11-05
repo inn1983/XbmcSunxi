@@ -182,11 +182,17 @@ bool CPVRChannelGroup::MoveChannel(unsigned int iOldChannelNumber, unsigned int 
   bool bReturn(false);
   CSingleLock lock(m_critSection);
 
+  /* make sure the list is sorted by channel number */
+  SortByChannelNumber();
+
   /* old channel number out of range */
   if (iOldChannelNumber > m_members.size())
     return bReturn;
 
   /* new channel number out of range */
+  if (iNewChannelNumber < 1)
+    return bReturn;
+
   if (iNewChannelNumber > m_members.size())
     iNewChannelNumber = m_members.size();
 
@@ -196,7 +202,7 @@ bool CPVRChannelGroup::MoveChannel(unsigned int iOldChannelNumber, unsigned int 
   m_members.insert(m_members.begin() + iNewChannelNumber - 1, entry);
 
   /* renumber the list */
-  SortAndRenumber();
+  Renumber();
 
   m_bChanged = true;
 
@@ -761,7 +767,7 @@ bool CPVRChannelGroup::AddToGroup(CPVRChannel &channel, int iChannelNumber /* = 
 
     if (realChannel)
     {
-      PVRChannelGroupMember newMember = { realChannel, iChannelNumber };
+      PVRChannelGroupMember newMember = { realChannel, (unsigned int)iChannelNumber };
       m_members.push_back(newMember);
       m_bChanged = true;
 
