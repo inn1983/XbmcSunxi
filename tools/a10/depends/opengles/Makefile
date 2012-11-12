@@ -5,14 +5,9 @@ SUBVERSION1=.9310_Linux
 LOCATION1=http://malideveloper.com/files
 TARBALL1=$(MALISDK)$(SUBVERSION1).tar.gz
 
-GLESLIBS=mali-libs
+GLESLIBS=mali-libs-v2
 LOCATION2=https://github.com/linux-sunxi/mali-libs/tarball/master
 TARBALL2=$(GLESLIBS).tar.gz
-ifeq ($(USEARMHF), 1)
-LIBVERSION=r3p0/armhf/framebuffer
-else
-LIBVERSION=r2p4/armel/framebuffer
-endif
 
 all: .installed
 
@@ -43,12 +38,28 @@ $(TARBALLS)/$(TARBALL1):
 .lib: $(TARBALLS)/$(TARBALL2)
 	rm -rf tmp lib
 	mkdir tmp
+ifeq ($(USEARMHF), 1)
 	(	cd tmp &&\
 		tar xvfz $(TARBALLS)/$(TARBALL2) &&\
-		mv linux-sunxi-mali-libs*/$(LIBVERSION)/lib .. &&\
+		mv linux-sunxi-mali-libs*/lib/r3p0/armhf/framebuffer ../lib &&\
 		cd .. &&\
+		rm -f lib/Makefile &&\
 		rm -r tmp\
 	)
+	(	cd lib &&\
+		ln -s libMali.so libEGL.so &&\
+		ln -s libMali.so libGLESv1_CM.so &&\
+		ln -s libMali.so libGLESv2.so \
+	)
+else
+	(	cd tmp &&\
+		tar xvfz $(TARBALLS)/$(TARBALL2) &&\
+		mv linux-sunxi-mali-libs*/lib/r2p4/armel/framebuffer ../lib &&\
+		cd .. &&\
+		rm -f lib/Makefile &&\
+		rm -r tmp\
+	)
+endif
 	touch $@
 
 $(TARBALLS)/$(TARBALL2):
