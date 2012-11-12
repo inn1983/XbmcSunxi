@@ -12,7 +12,7 @@ HOME=$(shell echo ~)
 #where your tarballs go
 TARBALLS=$(HOME)/tarballs
 #whether to compile for armhf
-USEARMHF=0
+USEARMHF=1
 
 #
 # armhf notes:
