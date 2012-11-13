@@ -640,14 +640,14 @@ public:
   bool ImportArtFromXML(const TiXmlNode *node, std::map<std::string, std::string> &artwork);
 
   // smart playlists and main retrieval work in these functions
-  bool GetMoviesByWhere(const CStdString& strBaseDir, const Filter &filter, CFileItemList& items, bool fetchSets = false, const SortDescription &sortDescription = SortDescription());
+  bool GetMoviesByWhere(const CStdString& strBaseDir, const Filter &filter, CFileItemList& items, const SortDescription &sortDescription = SortDescription());
   bool GetSetsByWhere(const CStdString& strBaseDir, const Filter &filter, CFileItemList& items, bool ignoreSingleMovieSets = false);
   bool GetTvShowsByWhere(const CStdString& strBaseDir, const Filter &filter, CFileItemList& items, const SortDescription &sortDescription = SortDescription());
   bool GetEpisodesByWhere(const CStdString& strBaseDir, const Filter &filter, CFileItemList& items, bool appendFullShowPath = true, const SortDescription &sortDescription = SortDescription());
   bool GetMusicVideosByWhere(const CStdString &baseDir, const Filter &filter, CFileItemList& items, bool checkLocks = true, const SortDescription &sortDescription = SortDescription());
   
   // retrieve sorted and limited items
-  bool GetSortedVideos(MediaType mediaType, const CStdString& strBaseDir, const SortDescription &sortDescription, CFileItemList& items, const Filter &filter = Filter(), bool fetchSets = false);
+  bool GetSortedVideos(MediaType mediaType, const CStdString& strBaseDir, const SortDescription &sortDescription, CFileItemList& items, const Filter &filter = Filter());
 
   // partymode
   int GetMusicVideoCount(const CStdString& strWhere);
@@ -684,6 +684,7 @@ public:
   int AddTag(const std::string &tag);
   void AddTagToItem(int idItem, int idTag, const std::string &type);
   void RemoveTagFromItem(int idItem, int idTag, const std::string &type);
+  void RemoveTagsFromItem(int idItem, const std::string &type);
 
   virtual bool GetFilter(CDbUrl &videoUrl, Filter &filter, SortDescription &sorting);
 
@@ -762,6 +763,8 @@ protected:
   void GetDetailsFromDB(std::auto_ptr<dbiplus::Dataset> &pDS, int min, int max, const SDbTableOffsets *offsets, CVideoInfoTag &details, int idxOffset = 2);
   void GetDetailsFromDB(const dbiplus::sql_record* const record, int min, int max, const SDbTableOffsets *offsets, CVideoInfoTag &details, int idxOffset = 2);
   CStdString GetValueString(const CVideoInfoTag &details, int min, int max, const SDbTableOffsets *offsets) const;
+
+  void CleanupTags();
 
 private:
   virtual bool CreateTables();

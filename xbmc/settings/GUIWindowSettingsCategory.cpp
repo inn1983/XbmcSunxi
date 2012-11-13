@@ -1779,9 +1779,9 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
   else if (strSetting.Equals("pvrmanager.enabled"))
   {
     if (g_guiSettings.GetBool("pvrmanager.enabled"))
-      g_application.StartPVRManager();
+      CApplicationMessenger::Get().ExecBuiltIn("XBMC.StartPVRManager", false);
     else
-      g_application.StopPVRManager();
+      CApplicationMessenger::Get().ExecBuiltIn("XBMC.StopPVRManager", false);
   }
   else if (strSetting.Equals("masterlock.lockcode"))
   {
@@ -1949,6 +1949,10 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
        dialog->DoModal();
     }
   }
+  else if (strSetting.Equals("pvrclient.menuhook") && g_PVRManager.IsStarted())
+  {
+    g_PVRManager.Get().Clients()->ProcessMenuHooks(-1, PVR_MENUHOOK_SETTING);
+  }
   else if (strSetting.compare(0, 12, "audiooutput.") == 0)
   {
     if (strSetting.Equals("audiooutput.audiodevice"))
@@ -2063,7 +2067,6 @@ CGUIControl* CGUIWindowSettingsCategory::AddSetting(CSetting *pSetting, float wi
   {
     pControl = new CGUIEditControl(*m_pOriginalEdit);
     if (!pControl) return NULL;
-    ((CGUIEditControl *)pControl)->SettingsCategorySetTextAlign(XBFONT_CENTER_Y);
     ((CGUIEditControl *)pControl)->SetLabel(g_localizeStrings.Get(pSetting->GetLabel()));
     pControl->SetWidth(width);
     pSettingControl = new CEditSettingControl((CGUIEditControl *)pControl, iControlID, pSetting);
@@ -2072,7 +2075,6 @@ CGUIControl* CGUIWindowSettingsCategory::AddSetting(CSetting *pSetting, float wi
   {
     pControl = new CGUIButtonControl(*m_pOriginalButton);
     if (!pControl) return NULL;
-    ((CGUIButtonControl *)pControl)->SettingsCategorySetTextAlign(XBFONT_CENTER_Y);
     ((CGUIButtonControl *)pControl)->SetLabel(g_localizeStrings.Get(pSetting->GetLabel()));
     pControl->SetWidth(width);
     pSettingControl = new CButtonSettingControl((CGUIButtonControl *)pControl, iControlID, pSetting);
