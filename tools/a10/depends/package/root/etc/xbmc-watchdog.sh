@@ -1,5 +1,18 @@
 #!/bin/sh
 
+#USEHWR="A10HWR=1"
+
+if [ -d /lib/arm-linux-gnueabihf ]
+then
+	#assume linaro rootfs
+	USER=linaro
+	XBMC=/allwinner/xbmc-pvr-binhf/lib/xbmc/xbmc.bin
+else
+	#assume miniand rootfs
+	USER=miniand
+	XBMC=/allwinner/xbmc-pvr-bin/lib/xbmc/xbmc.bin
+fi
+
 #
 #some q&d to avoid editing system config files.
 #
@@ -20,7 +33,7 @@ stop lightdm
 
 while true
 do
-    su - miniand -c "/allwinner/xbmc-pvr-bin/lib/xbmc/xbmc.bin --standalone -fs --lircdev /var/run/lirc/lircd 2>&1 | logger -t xbmc"
+    su - $USER -c "$USEHWR $XBMC --standalone -fs --lircdev /var/run/lirc/lircd 2>&1 | logger -t xbmc"
     case "$?" in
          0) # user quit. 
 	    	sleep 2 ;;
