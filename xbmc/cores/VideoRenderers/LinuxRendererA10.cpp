@@ -1693,21 +1693,6 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
 
   if ((g_srcRect != srcRect) || (g_dstRect != dstRect))
   {
-    int screen_width, screen_height;
-
-    //query screen dimensions
-    args[0] = g_screenid;
-    args[1] = 0;
-    args[2] = 0;
-    args[3] = 0;
-    screen_width = ioctl(g_hdisp, DISP_CMD_SCN_GET_WIDTH, args);
-
-    args[0] = g_screenid;
-    args[1] = 0;
-    args[2] = 0;
-    args[3] = 0;
-    screen_height = ioctl(g_hdisp, DISP_CMD_SCN_GET_HEIGHT, args);
-
     memset(&layera, 0, sizeof(layera));
     //set video layer attribute
     layera.mode          = DISP_LAYER_WORK_MODE_SCALER;
@@ -1750,18 +1735,42 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
     layera.scn_win.height = lrint(dstRect.y2-dstRect.y1);
 
     CLog::Log(LOGDEBUG, "A10: srcRect=(%lf,%lf)-(%lf,%lf)\n", srcRect.x1, srcRect.y1, srcRect.x2, srcRect.y2);
-    CLog::Log(LOGDEBUG, "A10: dstRect=(%lf,%lf)-(%lf,%lf)\n", srcRect.x1, srcRect.y1, srcRect.x2, srcRect.y2);
+    CLog::Log(LOGDEBUG, "A10: dstRect=(%lf,%lf)-(%lf,%lf)\n", dstRect.x1, dstRect.y1, dstRect.x2, dstRect.y2);
 
-    if ((layera.scn_win.x < 0) || (layera.scn_win.y < 0))
+    if (    (layera.scn_win.x < 0)
+         || (layera.scn_win.y < 0)
+         || (layera.scn_win.width  > g_width)
+         || (layera.scn_win.height > g_height)    )
     {
+      double xzoom, yzoom;
 
-      CLog::Log(LOGERROR, "A10: oops, bad dimensions\n");
+      //TODO: this calculation is against the display fullscreen dimensions,
+      //but should be against the fullscreen area of xbmc
 
-      //TODO:
-      //dvdplayer is giving negative values in the destination rect.
-      //we can not do that, so we have to adjust the source rect.
-      //header file says that only width and height can be used
-      //in scaler mode.
+      xzoom = (dstRect.x2 - dstRect.x1) / (srcRect.x2 - srcRect.x1);
+      yzoom = (dstRect.y2 - dstRect.y1) / (srcRect.y2 - srcRect.x1);
+
+      if (layera.scn_win.x < 0)
+      {
+        layera.src_win.x -= layera.scn_win.x / xzoom;
+        layera.scn_win.x = 0;
+      }
+      if (layera.scn_win.width > g_width)
+      {
+        layera.src_win.width -= (layera.scn_win.width - g_width) / xzoom;
+        layera.scn_win.width = g_width;
+      }
+
+      if (layera.scn_win.y < 0)
+      {
+        layera.src_win.y -= layera.scn_win.y / yzoom;
+        layera.scn_win.y = 0;
+      }
+      if (layera.scn_win.height > g_height)
+      {
+        layera.src_win.height -= (layera.scn_win.height - g_height) / yzoom;
+        layera.scn_win.height = g_height;
+      }
     }
 
     args[0] = g_screenid;
@@ -1795,7 +1804,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
     if (ioctl(g_hdisp, DISP_CMD_LAYER_CK_OFF, args))
       CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_CK_OFF failed.\n");
 
-    if ((screen_height > 720) && (getenv("A10AB") == NULL))
+    if ((g_height > 720) && (getenv("A10AB") == NULL))
     {
       //no tearing at the cost off alpha blending...
 
