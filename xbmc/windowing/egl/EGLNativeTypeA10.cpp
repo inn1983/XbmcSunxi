@@ -24,9 +24,9 @@
 #include "guilib/gui3d.h"
 
 #if defined(ALLWINNERA10) && !defined(TARGET_ANDROID)
-#include <sys/ioctl.h>
 #include "cores/VideoRenderers/LinuxRendererA10.h"
 static fbdev_window g_fbwin;
+static double       g_refreshRate;
 #endif
 
 CEGLNativeTypeA10::CEGLNativeTypeA10()
@@ -34,7 +34,7 @@ CEGLNativeTypeA10::CEGLNativeTypeA10()
 #if defined(ALLWINNERA10) && !defined(TARGET_ANDROID)
   int width, height;
 
-  A10VLInit(width, height);
+  A10VLInit(width, height, g_refreshRate);
   g_fbwin.width  = width;
   g_fbwin.height = height;
 #endif
@@ -112,7 +112,7 @@ bool CEGLNativeTypeA10::GetNativeResolution(RESOLUTION_INFO *res) const
   res->iWidth = g_fbwin.width;
   res->iHeight= g_fbwin.height;
 
-  res->fRefreshRate = 60;
+  res->fRefreshRate = g_refreshRate;
   res->dwFlags= D3DPRESENTFLAG_PROGRESSIVE | D3DPRESENTFLAG_WIDESCREEN;
   res->iScreen       = 0;
   res->bFullScreen   = true;

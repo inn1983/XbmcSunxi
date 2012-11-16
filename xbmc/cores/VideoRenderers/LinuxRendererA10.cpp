@@ -1427,7 +1427,7 @@ static int             g_rdidx;
 static A10VLQueueItem  g_dispq[DISPQS];
 static pthread_mutex_t g_dispq_mutex;
 
-bool A10VLInit(int &width, int &height)
+bool A10VLInit(int &width, int &height, double &refreshRate)
 {
   unsigned long       args[4];
   __disp_layer_info_t layera;
@@ -1448,6 +1448,29 @@ bool A10VLInit(int &width, int &height)
   args[3] = 0;
   width  = g_width  = ioctl(g_hdisp, DISP_CMD_SCN_GET_WIDTH , args);
   height = g_height = ioctl(g_hdisp, DISP_CMD_SCN_GET_HEIGHT, args);
+
+  i = ioctl(g_hdisp, DISP_CMD_HDMI_GET_MODE, args);
+
+  switch(i)
+  {
+  case DISP_TV_MOD_720P_50HZ:
+  case DISP_TV_MOD_1080I_50HZ:
+  case DISP_TV_MOD_1080P_50HZ:
+    refreshRate = 50.0;
+    break;
+  case DISP_TV_MOD_720P_60HZ:
+  case DISP_TV_MOD_1080I_60HZ:
+  case DISP_TV_MOD_1080P_60HZ:
+    refreshRate = 60.0;
+    break;
+  case DISP_TV_MOD_1080P_24HZ:
+    refreshRate = 24.0;
+    break;
+  default:
+    CLog::Log(LOGERROR, "A10: display mode %d is unknown. Assume refreh rate 60Hz\n", i);
+    refreshRate = 60.0;
+    break;
+  }
 
   if ((g_height > 720) && (getenv("A10AB") == NULL))
   {
@@ -1852,6 +1875,22 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
       if (ioctl(g_hdisp, DISP_CMD_LAYER_ALPHA_OFF, args))
         CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_ALPHA_OFF failed.\n");
     }
+
+    //enable vpp
+    args[0] = g_screenid;
+    args[1] = g_syslayer;
+    args[2] = 0;
+    args[3] = 0;
+    if (ioctl(g_hdisp, DISP_CMD_LAYER_VPP_ON, args))
+      CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_VPP_ON failed.\n");
+
+    //enable enhance
+    args[0] = g_screenid;
+    args[1] = g_syslayer;
+    args[2] = 0;
+    args[3] = 0;
+    if (ioctl(g_hdisp, DISP_CMD_LAYER_ENHANCE_ON, args))
+      CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_ENHANCE_ON failed.\n");
 
     //start video
     args[0] = g_screenid;
