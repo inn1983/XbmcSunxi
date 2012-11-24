@@ -69,9 +69,7 @@ public:
    * returns true if successfull
    * the data is cleared to zero
    */
-  /*-->super
   bool ClearPicture(DVDVideoPicture* pDvdVideoPicture);
-  */
 
   /*
    * returns true if successfull
@@ -142,4 +140,6 @@ private:
   int                   m_hscaler;
   u8                   *m_yuvdata;
   DVDVideoPicture       m_picture;
+  bool                  m_prebuffer;
+  int                   m_nframes;
 };

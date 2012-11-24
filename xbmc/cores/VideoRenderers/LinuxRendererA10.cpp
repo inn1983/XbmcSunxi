@@ -387,6 +387,8 @@ void CLinuxRendererA10::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     if (m_RenderUpdateCallBackFn)
       (*m_RenderUpdateCallBackFn)(m_RenderUpdateCallBackCtx, m_sourceRect, m_destRect);
 
+    A10VLWaitVSYNC();
+
     g_graphicsContext.BeginPaint();
 
     glEnable(GL_BLEND);
@@ -1412,6 +1414,7 @@ void CLinuxRendererA10::AddProcessor(struct A10VLQueueItem *buffer)
  * Video layer functions
  */
 
+static int             g_hfb = -1;
 static int             g_hdisp = -1;
 static int             g_screenid = 0;
 static int             g_syslayer = 0x64;
@@ -1434,6 +1437,8 @@ bool A10VLInit(int &width, int &height, double &refreshRate)
   unsigned int        i;
 
   pthread_mutex_init(&g_dispq_mutex, NULL);
+
+  g_hfb = open("/dev/fb0", O_RDWR);
 
   g_hdisp = open("/dev/disp", O_RDWR);
   if (g_hdisp == -1)
@@ -1583,6 +1588,11 @@ void A10VLExit()
     close(g_hdisp);
     g_hdisp = -1;
   }
+  if (g_hfb != -1)
+  {
+    close(g_hfb);
+    g_hfb = -1;
+  }
 }
 
 void A10VLHide()
@@ -1608,6 +1618,13 @@ void A10VLHide()
 
   memset(&g_srcRect, 0, sizeof(g_srcRect));
   memset(&g_dstRect, 0, sizeof(g_dstRect));
+}
+
+#define FBIO_WAITFORVSYNC _IOW('F', 0x20, u32)
+
+void A10VLWaitVSYNC()
+{
+  //ioctl(g_hfb, FBIO_WAITFORVSYNC, NULL);
 }
 
 A10VLQueueItem *A10VLPutQueue(A10VLCALLBACK     callback,
@@ -1878,7 +1895,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
 
     //enable vpp
     args[0] = g_screenid;
-    args[1] = g_syslayer;
+    args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
     if (ioctl(g_hdisp, DISP_CMD_LAYER_VPP_ON, args))
@@ -1886,7 +1903,7 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
 
     //enable enhance
     args[0] = g_screenid;
-    args[1] = g_syslayer;
+    args[1] = g_hlayer;
     args[2] = 0;
     args[3] = 0;
     if (ioctl(g_hdisp, DISP_CMD_LAYER_ENHANCE_ON, args))

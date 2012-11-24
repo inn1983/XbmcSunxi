@@ -46,7 +46,7 @@ namespace Shaders { class BaseVideoFilterShader; }
 
 typedef std::vector<int>     Features;
 
-#define NUM_BUFFERS 3
+#define NUM_BUFFERS 2
 
 
 #undef ALIGN
@@ -272,7 +272,7 @@ extern "C" {
 #include <os_adapter.h>
 }
 
-#define DISPQS 10
+#define DISPQS 24
 
 typedef void (*A10VLCALLBACK)(void *callbackpriv, void *pictpriv, cedarv_picture_t &pict); //cleanup function
 
@@ -303,6 +303,8 @@ bool A10VLInit(int &width, int &height, double &refreshRate);
 void A10VLExit();
 
 void A10VLHide();
+
+void A10VLWaitVSYNC();
 
 A10VLQueueItem *A10VLPutQueue(A10VLCALLBACK     callback,
                               void             *callbackpriv,
