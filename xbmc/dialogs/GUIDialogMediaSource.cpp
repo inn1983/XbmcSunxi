@@ -97,6 +97,8 @@ bool CGUIDialogMediaSource::OnMessage(CGUIMessage& message)
         OnOK();
       else if (iControl == CONTROL_CANCEL)
         OnCancel();
+      else
+        break;
       return true;
     }
     break;
@@ -163,8 +165,7 @@ bool CGUIDialogMediaSource::ShowAndAddMediaSource(const CStdString &type)
 
 bool CGUIDialogMediaSource::ShowAndEditMediaSource(const CStdString &type, const CStdString&share)
 {
-  VECSOURCES* pShares=NULL;
-
+  VECSOURCES* pShares = g_settings.GetSourcesFromType(type);
   if (pShares)
   {
     for (unsigned int i=0;i<pShares->size();++i)
@@ -173,7 +174,6 @@ bool CGUIDialogMediaSource::ShowAndEditMediaSource(const CStdString &type, const
         return ShowAndEditMediaSource(type,(*pShares)[i]);
     }
   }
-
   return false;
 }
 
@@ -366,7 +366,6 @@ void CGUIDialogMediaSource::OnPath(int item)
 
   CStdString path(m_paths->Get(item)->GetPath());
   CGUIKeyboardFactory::ShowAndGetInput(path, g_localizeStrings.Get(1021), false);
-  URIUtils::AddSlashAtEnd(path);
   m_paths->Get(item)->SetPath(path);
 
   if (!m_bNameChanged || m_name.IsEmpty())

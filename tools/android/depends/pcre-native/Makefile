@@ -9,7 +9,7 @@ SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
-CONFIGURE=./configure --prefix=$(PREFIX) --disable-cpp --disable-shared --enable-static
+CONFIGURE=./configure --prefix=$(PREFIX) --disable-cpp --disable-shared
 
 
 LIBDYLIB=$(PLATFORM)/.libs/lib$(LIBNAME).so

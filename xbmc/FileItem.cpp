@@ -357,7 +357,8 @@ CFileItem::CFileItem(const CMediaSource& share)
   m_bIsFolder = true;
   m_bIsShareOrDrive = true;
   m_strPath = share.strPath;
-  URIUtils::AddSlashAtEnd(m_strPath);
+  if (!IsRSS()) // no slash at end for rss feeds
+    URIUtils::AddSlashAtEnd(m_strPath);
   CStdString label = share.strName;
   if (!share.strStatus.IsEmpty())
     label.Format("%s (%s)", share.strName.c_str(), share.strStatus.c_str());
@@ -2618,7 +2619,7 @@ bool CFileItemList::AlwaysCache() const
   return false;
 }
 
-CStdString CFileItem::GetUserMusicThumb(bool alwaysCheckRemote /* = false */) const
+CStdString CFileItem::GetUserMusicThumb(bool alwaysCheckRemote /* = false */, bool fallbackToFolder /* = false */) const
 {
   if (m_strPath.IsEmpty()
    || m_bIsShareOrDrive
@@ -2635,6 +2636,13 @@ CStdString CFileItem::GetUserMusicThumb(bool alwaysCheckRemote /* = false */) co
   CStdString fileThumb(GetTBNFile());
   if (CFile::Exists(fileThumb))
     return fileThumb;
+
+  // Fall back to folder thumb, if requested
+  if (!m_bIsFolder && fallbackToFolder)
+  {
+    CFileItem item(URIUtils::GetDirectory(m_strPath), true);
+    return item.GetUserMusicThumb(alwaysCheckRemote);
+  }
 
   // if a folder, check for folder.jpg
   if (m_bIsFolder && !IsFileFolder() && (!IsRemote() || alwaysCheckRemote || g_guiSettings.GetBool("musicfiles.findremotethumbs")))
@@ -2773,7 +2781,10 @@ CStdString CFileItem::GetLocalArt(const std::string &artFile, bool useFolder) co
     return "";
 
   if (useFolder)
-    return URIUtils::AddFileToFolder(strFile, artFile);
+  {
+    if (!artFile.empty())
+      return URIUtils::AddFileToFolder(strFile, artFile);
+  }
   else
   {
     if (artFile.empty()) // old thumbnail matching

@@ -470,8 +470,8 @@ void CGUISettings::Initialize()
   map<int,int> channelLayout;
   for(int layout = AE_CH_LAYOUT_2_0; layout < AE_CH_LAYOUT_MAX; ++layout)
     channelLayout.insert(make_pair(34100+layout, layout));
-  AddInt(ao, "audiooutput.channellayout", 34100, AE_CH_LAYOUT_2_0, channelLayout, SPIN_CONTROL_TEXT);
-  AddBool(ao, "audiooutput.normalizelevels", 346, false);
+  AddInt(ao, "audiooutput.channels", 34100, AE_CH_LAYOUT_2_0, channelLayout, SPIN_CONTROL_TEXT);
+  AddBool(ao, "audiooutput.normalizelevels", 346, true);
   AddBool(ao, "audiooutput.stereoupmix", 252, false);
 
 #if defined(TARGET_DARWIN_IOS)
@@ -884,8 +884,8 @@ void CGUISettings::Initialize()
   AddString(laf, "lookandfeel.rssedit", 21450, "", BUTTON_CONTROL_STANDARD);
 
   CSettingsCategory* loc = AddCategory(SETTINGS_APPEARANCE, "locale", 14090);
-  AddString(loc, "locale.language",248,"english", SPIN_CONTROL_TEXT);
-  AddString(loc, "locale.country", 20026, "USA", SPIN_CONTROL_TEXT);
+  AddString(loc, "locale.language",248,"English", SPIN_CONTROL_TEXT);
+  AddString(loc, "locale.country", 20026, "USA (12h)", SPIN_CONTROL_TEXT);
   AddString(loc, "locale.charset", 14091, "DEFAULT", SPIN_CONTROL_TEXT); // charset is set by the language file
 
   bool use_timezone = false;
@@ -923,10 +923,10 @@ void CGUISettings::Initialize()
   AddBool(fl, "filelists.showhidden", 21330, false);
 
   CSettingsCategory* ss = AddCategory(SETTINGS_APPEARANCE, "screensaver", 360);
-  AddInt(ss, "screensaver.time", 355, 3, 1, 1, 60, SPIN_CONTROL_INT_PLUS, MASK_MINS);
   AddDefaultAddon(ss, "screensaver.mode", 356, "screensaver.xbmc.builtin.dim", ADDON_SCREENSAVER);
   AddString(ss, "screensaver.settings", 21417, "", BUTTON_CONTROL_STANDARD);
   AddString(ss, "screensaver.preview", 1000, "", BUTTON_CONTROL_STANDARD);
+  AddInt(ss, "screensaver.time", 355, 3, 1, 1, 60, SPIN_CONTROL_INT_PLUS, MASK_MINS);
   AddSeparator(ss, "screensaver.sep1");
   AddBool(ss, "screensaver.usemusicvisinstead", 13392, true);
   AddBool(ss, "screensaver.usedimonpause", 22014, true);
@@ -975,11 +975,11 @@ void CGUISettings::Initialize()
   CSettingsCategory* pvrp = AddCategory(SETTINGS_PVR, "pvrplayback", 19177);
   AddBool(pvrp, "pvrplayback.playminimized", 19171, true);
   AddInt(pvrp, "pvrplayback.startlast", 19189, START_LAST_CHANNEL_OFF, START_LAST_CHANNEL_OFF, 1, START_LAST_CHANNEL_ON, SPIN_CONTROL_TEXT);
-  AddBool(pvrp, "pvrplayback.switchautoclose", 19168, true);
   AddBool(pvrp, "pvrplayback.signalquality", 19037, true);
   AddSeparator(pvrp, "pvrplayback.sep1");
   AddInt(pvrp, "pvrplayback.scantime", 19170, 10, 1, 1, 60, SPIN_CONTROL_INT_PLUS, MASK_SECS);
-  AddInt(pvrp, "pvrplayback.channelentrytimeout", 19073, 0, 0, 250, 2000, SPIN_CONTROL_INT_PLUS, MASK_MS);
+  AddBool(pvrp, "pvrplayback.confirmchannelswitch", 19281, false);
+  AddInt(pvrp, "pvrplayback.channelentrytimeout", 19073, 0, 0, 250, 10000, SPIN_CONTROL_INT_PLUS, MASK_MS);
 
   CSettingsCategory* pvrr = AddCategory(SETTINGS_PVR, "pvrrecord", 19043);
   AddInt(pvrr, "pvrrecord.instantrecordtime", 19172, 120, 1, 1, 720, SPIN_CONTROL_INT_PLUS, MASK_MINS);
@@ -1354,10 +1354,46 @@ void CGUISettings::GetSettingsGroup(CSettingsCategory* cat, vecSettings &setting
 
 void CGUISettings::LoadXML(TiXmlElement *pRootElement, bool hideSettings /* = false */)
 { // load our stuff...
+  bool updated = false;
+
   for (mapIter it = settingsMap.begin(); it != settingsMap.end(); it++)
   {
     LoadFromXML(pRootElement, it, hideSettings);
   }
+
+  // check if we are updating to Frodo and need to update from
+  // audiooutput.channellayout to audiooutput.channels
+  TiXmlNode *channelNode = pRootElement->FirstChild("audiooutput");
+  if (channelNode != NULL)
+  {
+    channelNode = channelNode->FirstChild("channellayout");
+    CSettingInt* channels = (CSettingInt*)GetSetting("audiooutput.channels");
+    if (channelNode != NULL && channelNode->FirstChild() != NULL && channels != NULL)
+    {
+      channels->FromString(channelNode->FirstChild()->ValueStr());
+      if (channels->GetData() < AE_CH_LAYOUT_MAX - 1)
+        channels->SetData(channels->GetData() + 1);
+
+      // let's just reset the audiodevice settings as well
+      std::string audiodevice = GetString("audiooutput.audiodevice");
+      CAEFactory::VerifyOutputDevice(audiodevice, false);
+      SetString("audiooutput.audiodevice", audiodevice.c_str());
+
+      updated = true;
+    }
+  }
+
+  // and fix the videoscreen.screenmode if necessary
+  std::string screenmode = GetString("videoscreen.screenmode");
+  // in Eden there was no character ("i" or "p") indicating interlaced/progressive
+  // at the end so we just add a "p" and assume progressive
+  if (screenmode.size() == 20)
+  {
+    screenmode += "p";
+    SetString("videoscreen.screenmode", screenmode.c_str());
+    updated = true;
+  }
+
   // Get hardware based stuff...
   CLog::Log(LOGNOTICE, "Getting hardware information now...");
   // FIXME: Check if the hardware supports it (if possible ;)
@@ -1401,6 +1437,7 @@ void CGUISettings::LoadXML(TiXmlElement *pRootElement, bool hideSettings /* = fa
     {
       timezone = g_timezone.GetOSConfiguredTimezone();
       SetString("locale.timezone", timezone);
+      updated = true;
     }
     g_timezone.SetTimezone(timezone);
   }
@@ -1417,6 +1454,9 @@ void CGUISettings::LoadXML(TiXmlElement *pRootElement, bool hideSettings /* = fa
     g_langInfo.SetSubtitleLanguage(streamLanguage);
   else
     g_langInfo.SetSubtitleLanguage("");
+
+  if (updated)
+    g_settings.Save();
 }
 
 void CGUISettings::LoadFromXML(TiXmlElement *pRootElement, mapIter &it, bool advanced /* = false */)

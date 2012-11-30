@@ -128,7 +128,8 @@ JSONRPC_STATUS CFileOperations::GetDirectory(const CStdString &method, ITranspor
       if ((media == "video" && items[i]->HasVideoInfoTag()) ||
           (media == "music" && items[i]->HasMusicInfoTag()) ||
           (media == "picture" && items[i]->HasPictureInfoTag()) ||
-           media == "files")
+           media == "files" ||
+           URIUtils::IsUPnP(items.GetPath()))
       {
         if (items[i]->m_bIsFolder)
           filteredDirectories.Add(items[i]);
@@ -137,13 +138,13 @@ JSONRPC_STATUS CFileOperations::GetDirectory(const CStdString &method, ITranspor
       }
       else
       {
-        CFileItem fileItem;
-        if (FillFileItem(items[i], fileItem, media))
+        CFileItemPtr fileItem(new CFileItem());
+        if (FillFileItem(items[i], fileItem, media, parameterObject))
         {
           if (items[i]->m_bIsFolder)
-            filteredDirectories.Add(CFileItemPtr(new CFileItem(fileItem)));
+            filteredDirectories.Add(fileItem);
           else
-            filteredFiles.Add(CFileItemPtr(new CFileItem(fileItem)));
+            filteredFiles.Add(fileItem);
         }
         else
         {
@@ -212,7 +213,8 @@ JSONRPC_STATUS CFileOperations::GetFileDetails(const CStdString &method, ITransp
     return InvalidParams;
 
   CFileItemPtr item = items.Get(file);
-  FillFileItem(item, *item.get(), parameterObject["media"].asString());
+  if (!URIUtils::IsUPnP(file))
+    FillFileItem(item, item, parameterObject["media"].asString(), parameterObject);
 
   // Check if the "properties" list exists
   // and make sure it contains the "file"
@@ -261,24 +263,24 @@ JSONRPC_STATUS CFileOperations::Download(const CStdString &method, ITransportLay
   return transport->Download(parameterObject["path"].asString().c_str(), result) ? OK : InvalidParams;
 }
 
-bool CFileOperations::FillFileItem(const CFileItemPtr &originalItem, CFileItem &item, CStdString media /* = "" */)
+bool CFileOperations::FillFileItem(const CFileItemPtr &originalItem, CFileItemPtr &item, CStdString media /* = "" */, const CVariant &parameterObject /* = CVariant(CVariant::VariantTypeArray) */)
 {
   if (originalItem.get() == NULL)
     return false;
 
   // copy all the available details
-  item = *originalItem;
+  *item = *originalItem;
 
   bool status = false;
   CStdString strFilename = originalItem->GetPath();
   if (!strFilename.empty() && (CDirectory::Exists(strFilename) || CFile::Exists(strFilename)))
   {
     if (media.Equals("video"))
-      status = CVideoLibrary::FillFileItem(strFilename, item);
+      status = CVideoLibrary::FillFileItem(strFilename, item, parameterObject);
     else if (media.Equals("music"))
-      status = CAudioLibrary::FillFileItem(strFilename, item);
+      status = CAudioLibrary::FillFileItem(strFilename, item, parameterObject);
 
-    if (status && item.GetLabel().empty())
+    if (status && item->GetLabel().empty())
     {
       CStdString label = originalItem->GetLabel();
       if (label.empty())
@@ -289,7 +291,7 @@ bool CFileOperations::FillFileItem(const CFileItemPtr &originalItem, CFileItem &
           label = URIUtils::GetFileName(strFilename);
       }
 
-      item.SetLabel(label);
+      item->SetLabel(label);
     }
     else if (!status)
     {
@@ -300,12 +302,12 @@ bool CFileOperations::FillFileItem(const CFileItemPtr &originalItem, CFileItem &
         if (label.empty())
           return false;
 
-        item.SetLabel(label);
-        item.SetPath(strFilename);
-        item.m_bIsFolder = isDir;
+        item->SetLabel(label);
+        item->SetPath(strFilename);
+        item->m_bIsFolder = isDir;
       }
       else
-        item = *originalItem.get();
+        *item = *originalItem;
 
       status = true;
     }
@@ -361,9 +363,9 @@ bool CFileOperations::FillFileItemList(const CVariant &parameterObject, CFileIte
             list.Add(items[i]);
           else
           {
-            CFileItem fileItem;
-            if (FillFileItem(items[i], fileItem, media))
-              list.Add(CFileItemPtr(new CFileItem(fileItem)));
+            CFileItemPtr fileItem(new CFileItem());
+            if (FillFileItem(items[i], fileItem, media, parameterObject))
+              list.Add(fileItem);
             else if (media == "files")
               list.Add(items[i]);
           }

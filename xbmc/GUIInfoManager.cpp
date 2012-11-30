@@ -2977,7 +2977,7 @@ CStdString CGUIInfoManager::GetMultiInfoLabel(const GUIInfo &info, int contextWi
     else
     {
       time = CDateTime::GetCurrentDateTime();
-      time -= CDateTimeSpan(0, 0, 0, GetPlayTime());
+      time -= CDateTimeSpan(0, 0, 0, (int)GetPlayTime());
     }
     return LocalizeTime(time, (TIME_FORMAT)info.GetData1());
   }
@@ -4494,8 +4494,7 @@ CStdString CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, CStdSt
       }
       else if (item->HasVideoInfoTag())
       {
-        if (!item->GetVideoInfoTag()->m_strRuntime.IsEmpty())
-          duration = item->GetVideoInfoTag()->m_strRuntime;
+        duration.Format("%d", item->GetVideoInfoTag()->GetDuration() / 60);
       }
       else if (item->HasMusicInfoTag())
       {

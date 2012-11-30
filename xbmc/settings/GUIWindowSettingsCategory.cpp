@@ -783,16 +783,10 @@ void CGUIWindowSettingsCategory::UpdateSettings()
           pControl->SetEnabled(g_guiSettings.GetInt("audiooutput.mode") == AUDIO_HDMI);
       }
     }
-    else if (strSetting.Equals("musicplayer.crossfade"))
-    {
-      CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
-      if (pControl) pControl->SetEnabled(g_guiSettings.GetString("audiooutput.audiodevice").find("wasapi:") == CStdString::npos);
-    }
     else if (strSetting.Equals("musicplayer.crossfadealbumtracks"))
     {
       CGUIControl *pControl = (CGUIControl *)GetControl(pSettingControl->GetID());
-      if (pControl) pControl->SetEnabled(g_guiSettings.GetInt("musicplayer.crossfade") > 0 &&
-                                         g_guiSettings.GetString("audiooutput.audiodevice").find("wasapi:") == CStdString::npos);
+      if (pControl) pControl->SetEnabled(g_guiSettings.GetInt("musicplayer.crossfade") > 0);
     }
 #ifdef HAS_WEB_SERVER
     else if (strSetting.Equals("services.webserverusername") ||
@@ -928,6 +922,7 @@ void CGUIWindowSettingsCategory::UpdateSettings()
         pControl->SetEnabled(false);
     }
     else if (strSetting.Equals("screensaver.preview")           ||
+             strSetting.Equals("screensaver.time")              ||
              strSetting.Equals("screensaver.usedimonpause")     ||
              strSetting.Equals("screensaver.usemusicvisinstead"))
     {
@@ -1959,7 +1954,12 @@ void CGUIWindowSettingsCategory::OnSettingChanged(CBaseSettingControl *pSettingC
     {
       CGUISpinControlEx *pControl = (CGUISpinControlEx *)GetControl(pSettingControl->GetID());
 #if defined(TARGET_DARWIN)
-      g_guiSettings.SetString("audiooutput.audiodevice", pControl->GetCurrentLabel());
+      // save the sinkname - since we don't have sinks on osx
+      // we need to get the fitting sinkname for the device label from the
+      // factory
+      std::string label2sink = pControl->GetCurrentLabel();
+      CAEFactory::VerifyOutputDevice(label2sink, false);
+      g_guiSettings.SetString("audiooutput.audiodevice", label2sink.c_str());
 #else
       g_guiSettings.SetString("audiooutput.audiodevice", m_AnalogAudioSinkMap[pControl->GetCurrentLabel()]);
 #endif
@@ -2875,8 +2875,6 @@ void CGUIWindowSettingsCategory::FillInAudioDevices(CSetting* pSetting, bool Pas
     m_AnalogAudioSinkMap["Error - no devices found"] = "null:";
   }
 
-  int numberSinks = 0;
-
   int selectedValue = -1;
   AEDeviceList sinkList;
   CAEFactory::EnumerateOutputDevices(sinkList, Passthrough);
@@ -2884,7 +2882,6 @@ void CGUIWindowSettingsCategory::FillInAudioDevices(CSetting* pSetting, bool Pas
   if (sinkList.size()==0)
   {
     pControl->AddLabel("Error - no devices found", 0);
-    numberSinks = 1;
     selectedValue = 0;
   }
   else
@@ -2908,7 +2905,6 @@ void CGUIWindowSettingsCategory::FillInAudioDevices(CSetting* pSetting, bool Pas
       i++;
     }
 
-    numberSinks = sinkList.size();
 #if !defined(TARGET_DARWIN)
   }
 #endif
@@ -2916,8 +2912,11 @@ void CGUIWindowSettingsCategory::FillInAudioDevices(CSetting* pSetting, bool Pas
   if (selectedValue < 0)
   {
     CLog::Log(LOGWARNING, "Failed to find previously selected audio sink");
-    pControl->AddLabel(currentDevice, numberSinks);
-    pControl->SetValue(numberSinks);
+    pControl->SetValue(0);
+    if (!Passthrough)
+      ((CSettingString*)pSetting)->SetData(m_AnalogAudioSinkMap[pControl->GetCurrentLabel()]);
+    else
+      ((CSettingString*)pSetting)->SetData(m_DigitalAudioSinkMap[pControl->GetCurrentLabel()]);
   }
   else
     pControl->SetValue(selectedValue);

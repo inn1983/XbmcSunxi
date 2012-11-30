@@ -250,30 +250,38 @@ bool CVideoThumbLoader::LoadItem(CFileItem* pItem)
   }
 
   // thumbnails are special-cased due to auto-generation
-  if (!pItem->HasArt("thumb") && !pItem->m_bIsFolder && pItem->IsVideo())
+  if (!pItem->m_bIsFolder && pItem->IsVideo())
   {
-    // create unique thumb for auto generated thumbs
-    CStdString thumbURL = GetEmbeddedThumbURL(*pItem);
-    if (CTextureCache::Get().HasCachedImage(thumbURL))
-    {
-      CTextureCache::Get().BackgroundCacheImage(thumbURL);
-      pItem->SetProperty("HasAutoThumb", true);
-      pItem->SetProperty("AutoThumbImage", thumbURL);
-      pItem->SetArt("thumb", thumbURL);
-    }
-    else if (g_guiSettings.GetBool("myvideos.extractthumb") &&
-             g_guiSettings.GetBool("myvideos.extractflags"))
-    {
-      CFileItem item(*pItem);
-      CStdString path(item.GetPath());
-      if (URIUtils::IsInRAR(item.GetPath()))
-        SetupRarOptions(item,path);
+    // An auto-generated thumb may have been cached on a different device - check we have it here 
+    CStdString url = pItem->GetArt("thumb");
+    if (url.compare(0, 14, "image://video@") == 0 && !CTextureCache::Get().HasCachedImage(url))
+      pItem->SetArt("thumb", "");
 
-      CThumbExtractor* extract = new CThumbExtractor(item, path, true, thumbURL);
-      AddJob(extract);
+    if (!pItem->HasArt("thumb"))
+    {
+      // create unique thumb for auto generated thumbs
+      CStdString thumbURL = GetEmbeddedThumbURL(*pItem);
+      if (CTextureCache::Get().HasCachedImage(thumbURL))
+      {
+        CTextureCache::Get().BackgroundCacheImage(thumbURL);
+        pItem->SetProperty("HasAutoThumb", true);
+        pItem->SetProperty("AutoThumbImage", thumbURL);
+        pItem->SetArt("thumb", thumbURL);
+      }
+      else if (g_guiSettings.GetBool("myvideos.extractthumb") &&
+        g_guiSettings.GetBool("myvideos.extractflags"))
+      {
+        CFileItem item(*pItem);
+        CStdString path(item.GetPath());
+        if (URIUtils::IsInRAR(item.GetPath()))
+          SetupRarOptions(item,path);
 
-      m_database->Close();
-      return true;
+        CThumbExtractor* extract = new CThumbExtractor(item, path, true, thumbURL);
+        AddJob(extract);
+
+        m_database->Close();
+        return true;
+      }
     }
   }
 
@@ -382,7 +390,7 @@ std::string CVideoThumbLoader::GetLocalArt(const CFileItem &item, const std::str
   if (art.empty() && (type.empty() || type == "thumb"))
   { // backward compatibility
     art = item.FindLocalArt("", false);
-    if (art.empty() && (checkFolder || (item.m_bIsFolder && !item.IsFileFolder())))
+    if (art.empty() && (checkFolder || (item.m_bIsFolder && !item.IsFileFolder()) || item.IsOpticalMediaFile()))
     { // try movie.tbn
       art = item.FindLocalArt("movie.tbn", true);
       if (art.empty()) // try folder.jpg
