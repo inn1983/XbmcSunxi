@@ -1728,8 +1728,13 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
   frmbuf.interlace       = picture.is_progressive? 0 : 1;
   frmbuf.top_field_first = picture.top_field_first;
   //frmbuf.frame_rate      = picture.frame_rate;
+#ifdef CEDARV_FRAME_HAS_PHY_ADDR
+  frmbuf.addr[0]         = (u32)picture.y;
+  frmbuf.addr[1]         = (u32)picture.u;
+#else
   frmbuf.addr[0]         = mem_get_phy_addr((u32)picture.y);
   frmbuf.addr[1]         = mem_get_phy_addr((u32)picture.u);
+#endif
 
   if ((g_srcRect != srcRect) || (g_dstRect != dstRect))
   {

@@ -95,7 +95,7 @@ bool CDVDVideoCodecA10::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   else
   {
 #ifdef TARGET_ANDROID
-    m_hwrender = false;
+    m_hwrender = true;
 #else
     m_hwrender = getenv("A10HWR") != NULL;
 #endif
@@ -385,8 +385,16 @@ int CDVDVideoCodecA10::Decode(BYTE* pData, int iSize, double dts, double pts)
   cedarv_stream_data_info_t  dinf;
   cedarv_picture_t           picture;
 
+  printf("decode: %x\n", pthread_self());
+
   if (!m_hcedarv)
     return VC_ERROR;
+
+  if (m_nframes == 0)
+  {
+    m_hcedarv->decode(m_hcedarv);
+    m_hcedarv->decode(m_hcedarv);
+  }
 
   if (pData)
   {
@@ -525,8 +533,13 @@ int CDVDVideoCodecA10::Decode(BYTE* pData, int iSize, double dts, double pts)
 
         cdx_scaler_para.width_in   = picture.display_width;
         cdx_scaler_para.height_in  = picture.display_height;
+#ifdef CEDARV_FRAME_HAS_PHY_ADDR
+        cdx_scaler_para.addr_y_in  = (u32)picture.y;
+        cdx_scaler_para.addr_c_in  = (u32)picture.u;
+#else
         cdx_scaler_para.addr_y_in  = mem_get_phy_addr((u32)picture.y);
         cdx_scaler_para.addr_c_in  = mem_get_phy_addr((u32)picture.u);
+#endif
         cdx_scaler_para.width_out  = picture.display_width;
         cdx_scaler_para.height_out = picture.display_height;
         cdx_scaler_para.addr_y_out = mem_get_phy_addr((u32)m_yuvdata);
@@ -577,7 +590,7 @@ int CDVDVideoCodecA10::Decode(BYTE* pData, int iSize, double dts, double pts)
 void CDVDVideoCodecA10::Reset()
 {
   CLog::Log(LOGDEBUG, "A10: reset requested");
-  m_hcedarv->ioctrl(m_hcedarv, CEDARV_COMMAND_RESET, 0);
+  m_hcedarv->ioctrl(m_hcedarv, CEDARV_COMMAND_FLUSH, 0);
 }
 
 /*
@@ -586,6 +599,8 @@ void CDVDVideoCodecA10::Reset()
  */
 bool CDVDVideoCodecA10::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 {
+  printf("getpicture: %x\n", pthread_self());
+
   if (m_picture.iFlags & DVP_FLAG_ALLOCATED)
   {
     *pDvdVideoPicture = m_picture;
