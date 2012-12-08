@@ -36,6 +36,10 @@
 
 extern "C" {
 #include <libcedarv.h>
+#include <drv_display_sun4i.h>
+#ifndef CEDARV_FRAME_HAS_PHY_ADDR
+#include <os_adapter.h>
+#endif
 }
 
 class CRenderCapture;
@@ -266,12 +270,6 @@ inline int NP2( unsigned x )
  * Video layer functions
  */
 
-extern "C" {
-#include <libcedarv.h>
-#include <drv_display_sun4i.h>
-#include <os_adapter.h>
-}
-
 #define DISPQS 24
 
 typedef void (*A10VLCALLBACK)(void *callbackpriv, void *pictpriv, cedarv_picture_t &pict); //cleanup function
@@ -284,19 +282,6 @@ struct A10VLQueueItem
   void             *pictpriv;
   cedarv_picture_t  pict;
 };
-
-typedef struct
-{
-  int width_in;
-  int height_in;
-  int width_out;
-  int height_out;
-  u32 addr_y_in;
-  u32 addr_c_in;
-  u32 addr_y_out;
-  u32 addr_u_out;
-  u32 addr_v_out;
-} A10VLScalerParameter;
 
 bool A10VLInit(int &width, int &height, double &refreshRate);
 
@@ -316,7 +301,5 @@ void A10VLFreeQueue();
 void A10VLDisplayQueueItem(A10VLQueueItem *pItem, CRect &srcRect, CRect &dstRect);
 
 int  A10VLDisplayPicture(cedarv_picture_t &pict, int refnr, CRect &srcRect, CRect &dstRect);
-
-bool A10VLPictureScaler(A10VLScalerParameter *para);
 
 #endif

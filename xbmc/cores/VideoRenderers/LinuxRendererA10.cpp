@@ -1738,7 +1738,11 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
 
   if ((g_srcRect != srcRect) || (g_dstRect != dstRect))
   {
-    memset(&layera, 0, sizeof(layera));
+    args[0] = g_screenid;
+    args[1] = g_hlayer;
+    args[2] = (unsigned long) (&layera);
+    args[3] = 0;
+    ioctl(g_hdisp, DISP_CMD_LAYER_GET_PARA, args);
     //set video layer attribute
     layera.mode          = DISP_LAYER_WORK_MODE_SCALER;
     layera.b_from_screen = 0; //what is this? if enabled all is black
@@ -1940,64 +1944,6 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
   args[2] = 0;
   args[3] = 0;
   return ioctl(g_hdisp, DISP_CMD_VIDEO_GET_FRAME_ID, args);
-}
-
-bool A10VLPictureScaler(A10VLScalerParameter *para)
-{
-  unsigned long        args[4] = {0,0,0,0};
-  __disp_scaler_para_t scaler_para;
-  int                  hscaler;
-
-  memset(&scaler_para, 0, sizeof(__disp_scaler_para_t));
-  scaler_para.input_fb.addr[0] = para->addr_y_in;//
-  scaler_para.input_fb.addr[1] = para->addr_c_in;//
-  scaler_para.input_fb.size.width = para->width_in;//
-  scaler_para.input_fb.size.height = para->height_in;//
-  scaler_para.input_fb.format =  DISP_FORMAT_YUV420;
-  scaler_para.input_fb.seq = DISP_SEQ_UVUV;
-  scaler_para.input_fb.mode = DISP_MOD_MB_UV_COMBINED;
-  scaler_para.input_fb.br_swap = 0;
-  scaler_para.input_fb.cs_mode = DISP_BT601;
-  scaler_para.source_regn.x = 0;
-  scaler_para.source_regn.y = 0;
-  scaler_para.source_regn.width = para->width_in;//
-  scaler_para.source_regn.height = para->height_in;//
-
-  scaler_para.output_fb.addr[0] = (unsigned int)para->addr_y_out;//
-  scaler_para.output_fb.addr[1] = para->addr_u_out;//
-  scaler_para.output_fb.addr[2] = para->addr_v_out;//
-  scaler_para.output_fb.size.width = para->width_out;//
-  scaler_para.output_fb.size.height = para->height_out;//
-  scaler_para.output_fb.format = DISP_FORMAT_YUV420;
-  scaler_para.output_fb.seq  = DISP_SEQ_P3210;
-  scaler_para.output_fb.mode = DISP_MOD_NON_MB_PLANAR;
-  scaler_para.output_fb.br_swap = 0;
-  scaler_para.output_fb.cs_mode = DISP_YCC;
-
-  args[0] = g_screenid;
-  args[1] = 0;
-  args[2] = 0;
-  args[3] = 0;
-  hscaler = ioctl(g_hdisp, DISP_CMD_SCALER_REQUEST, args);
-  if (hscaler <= 0)
-  {
-    CLog::Log(LOGERROR, "A10: DISP_CMD_SCALER_REQUEST failed. (%d)", errno);
-    return false;
-  }
-
-  args[0] = g_screenid;
-  args[1] = hscaler;
-  args[2] = (unsigned long) &scaler_para;
-  args[3] = 0;
-  ioctl(g_hdisp, DISP_CMD_SCALER_EXECUTE, (unsigned long) args);
-
-  args[0] = g_screenid;
-  args[1] = hscaler;
-  args[2] = 0;
-  args[3] = 0;
-  ioctl(g_hdisp, DISP_CMD_SCALER_RELEASE, args);
-
-  return true;
 }
 
 #endif

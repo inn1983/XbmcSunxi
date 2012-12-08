@@ -13,10 +13,6 @@
 #include <sys/ioctl.h>
 #include <math.h>
 
-extern "C" {
-#include "os_adapter.h"
-};
-
 static long g_cedaropen = 0;
 
 #define PREFRAMES 10 //no. of stream frames to buffer
@@ -66,8 +62,6 @@ static void freecallback(void *callbackpriv, void *pictpriv, cedarv_picture_t &p
 CDVDVideoCodecA10::CDVDVideoCodecA10()
 {
   m_hcedarv  = NULL;
-  m_yuvdata  = NULL;
-  m_hwrender = false;
   memset(&m_picture, 0, sizeof(m_picture));
 }
 
@@ -92,16 +86,8 @@ bool CDVDVideoCodecA10::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     CLog::Log(LOGNOTICE, "A10: software decoding requested.\n");
     return false;
   }
-  else
-  {
-#ifdef TARGET_ANDROID
-    m_hwrender = true;
-#else
-    m_hwrender = getenv("A10HWR") != NULL;
-#endif
-  }
 
-  CLog::Log(LOGNOTICE, "A10: using %s rendering.\n", m_hwrender ? "hardware" : "software");
+  CLog::Log(LOGNOTICE, "A10: using hardware rendering.\n");
 
   m_hints  = hints;
   m_aspect = m_hints.aspect;
@@ -356,11 +342,6 @@ Error:
 void CDVDVideoCodecA10::Dispose()
 {
   A10VLFreeQueue();
-  if (m_yuvdata)
-  {
-    mem_pfree(m_yuvdata);
-    m_yuvdata = NULL;
-  }
   if (m_hcedarv)
   {
     m_hcedarv->ioctrl(m_hcedarv, CEDARV_COMMAND_STOP, 0);
@@ -385,8 +366,6 @@ int CDVDVideoCodecA10::Decode(BYTE* pData, int iSize, double dts, double pts)
   cedarv_stream_data_info_t  dinf;
   cedarv_picture_t           picture;
 
-  printf("decode: %x\n", pthread_self());
-
   if (!m_hcedarv)
     return VC_ERROR;
 
@@ -396,7 +375,7 @@ int CDVDVideoCodecA10::Decode(BYTE* pData, int iSize, double dts, double pts)
     m_hcedarv->decode(m_hcedarv);
   }
 
-  if (pData)
+  if (pData && iSize)
   {
     ret = m_hcedarv->request_write(m_hcedarv, iSize, &buf0, &bufsize0, &buf1, &bufsize1);
     if(ret < 0)
@@ -459,6 +438,9 @@ int CDVDVideoCodecA10::Decode(BYTE* pData, int iSize, double dts, double pts)
       status |= VC_BUFFER;
       break;
     case CEDARV_RESULT_NO_FRAME_BUFFER:
+      CLog::Log(LOGNOTICE, "A10: no frames. free queue.");
+      A10VLFreeQueue();
+      //ret = m_hcedarv->decode(m_hcedarv);
       break;
 
     default:
@@ -495,86 +477,11 @@ int CDVDVideoCodecA10::Decode(BYTE* pData, int iSize, double dts, double pts)
         m_picture.iDisplayHeight = ((int)lrint(m_picture.iWidth / aspect_ratio)) & -3;
       }
 
-      if (m_hwrender)
-      {
+      m_picture.format     = RENDER_FMT_A10BUF;
+      m_picture.a10buffer  = A10VLPutQueue(freecallback, (void*)this, NULL, picture);
+      m_picture.iFlags    |= DVP_FLAG_ALLOCATED;
 
-        m_picture.format     = RENDER_FMT_A10BUF;
-        m_picture.a10buffer  = A10VLPutQueue(freecallback, (void*)this, NULL, picture);
-        m_picture.iFlags    |= DVP_FLAG_ALLOCATED;
-
-        //CLog::Log(LOGDEBUG, "A10: decode %d\n", buffer->picture.id);
-      }
-      else
-      {
-        A10VLScalerParameter cdx_scaler_para;
-        u32 width32;
-        u32 height32;
-        u32 height64;
-        u32 ysize;
-        u32 csize;
-
-        m_picture.format = RENDER_FMT_YUV420P;
-
-        width32  = (picture.display_width  + 31) & ~31;
-        height32 = (picture.display_height + 31) & ~31;
-        height64 = (picture.display_height + 63) & ~63;
-
-        ysize = width32*height32;   //* for y.
-        csize = width32*height64/2; //* for u and v together.
-
-        if (!m_yuvdata) {
-          m_yuvdata = (u8*)mem_palloc(ysize + csize, 1024);
-          if (!m_yuvdata) {
-            CLog::Log(LOGERROR, "A10: can not alloc m_yuvdata!");
-            m_hcedarv->display_release(m_hcedarv, picture.id);
-            return VC_ERROR;
-          }
-        }
-
-        cdx_scaler_para.width_in   = picture.display_width;
-        cdx_scaler_para.height_in  = picture.display_height;
-#ifdef CEDARV_FRAME_HAS_PHY_ADDR
-        cdx_scaler_para.addr_y_in  = (u32)picture.y;
-        cdx_scaler_para.addr_c_in  = (u32)picture.u;
-#else
-        cdx_scaler_para.addr_y_in  = mem_get_phy_addr((u32)picture.y);
-        cdx_scaler_para.addr_c_in  = mem_get_phy_addr((u32)picture.u);
-#endif
-        cdx_scaler_para.width_out  = picture.display_width;
-        cdx_scaler_para.height_out = picture.display_height;
-        cdx_scaler_para.addr_y_out = mem_get_phy_addr((u32)m_yuvdata);
-        cdx_scaler_para.addr_u_out = cdx_scaler_para.addr_y_out + ysize;
-        cdx_scaler_para.addr_v_out = cdx_scaler_para.addr_u_out + csize/2;
-
-        if (!(m_picture.iFlags & DVP_FLAG_ALLOCATED)) {
-          u32 width16  = (picture.display_width  + 15) & ~15;
-
-          m_picture.iFlags |= DVP_FLAG_ALLOCATED;
-
-          m_picture.iLineSize[0] = width16;   //Y
-          m_picture.iLineSize[1] = width16/2; //U
-          m_picture.iLineSize[2] = width16/2; //V
-          m_picture.iLineSize[3] = 0;
-
-          m_picture.data[0] = m_yuvdata;
-          m_picture.data[1] = m_yuvdata+ysize;
-          m_picture.data[2] = m_yuvdata+ysize+csize/2;
-
-#ifdef A10DEBUG
-          CLog::Log(LOGDEBUG, "A10: p1=%d %d %d %d (%d)\n", picture.width, picture.height, picture.display_width, picture.display_height, picture.pixel_format);
-          CLog::Log(LOGDEBUG, "A10: p2=%d %d %d %d\n", m_picture.iWidth, m_picture.iHeight, m_picture.iDisplayWidth, m_picture.iDisplayHeight);
-#endif
-        }
-
-        if (!A10VLPictureScaler(&cdx_scaler_para))
-        {
-          CLog::Log(LOGERROR, "A10: hardware scaler failed.\n");
-          m_hcedarv->display_release(m_hcedarv, picture.id);
-          return VC_ERROR;
-        }
-
-        m_hcedarv->display_release(m_hcedarv, picture.id);
-      }
+      //CLog::Log(LOGDEBUG, "A10: decode %d\n", buffer->picture.id);
 
       status |= VC_PICTURE;
     }
@@ -589,8 +496,13 @@ int CDVDVideoCodecA10::Decode(BYTE* pData, int iSize, double dts, double pts)
  */
 void CDVDVideoCodecA10::Reset()
 {
+  cedarv_picture_t pict;
+
   CLog::Log(LOGDEBUG, "A10: reset requested");
   m_hcedarv->ioctrl(m_hcedarv, CEDARV_COMMAND_FLUSH, 0);
+  while(m_hcedarv->display_request(m_hcedarv, &pict) == 0)
+    m_hcedarv->display_release(m_hcedarv, pict.id);
+  A10VLFreeQueue();
 }
 
 /*
@@ -599,8 +511,6 @@ void CDVDVideoCodecA10::Reset()
  */
 bool CDVDVideoCodecA10::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 {
-  printf("getpicture: %x\n", pthread_self());
-
   if (m_picture.iFlags & DVP_FLAG_ALLOCATED)
   {
     *pDvdVideoPicture = m_picture;

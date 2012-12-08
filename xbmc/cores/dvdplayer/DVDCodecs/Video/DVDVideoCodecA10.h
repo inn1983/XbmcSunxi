@@ -129,16 +129,11 @@ private:
 
   bool DoOpen();
 
-  //rendering
-  bool m_hwrender;
-
   //decoding
   cedarv_stream_info_t  m_info;
   float                 m_aspect;
   CDVDStreamInfo        m_hints;
   cedarv_decoder_t     *m_hcedarv;
-  int                   m_hscaler;
-  u8                   *m_yuvdata;
   DVDVideoPicture       m_picture;
   bool                  m_prebuffer;
   int                   m_nframes;
