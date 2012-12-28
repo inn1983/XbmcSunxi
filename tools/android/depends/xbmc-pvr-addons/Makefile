@@ -2,7 +2,7 @@ include ../Makefile.include
 DEPS= ../Makefile.include Makefile
 
 LIBNAME=xbmc-pvr-addons
-VERSION=252fbbeaa1b2615ec21204756f5db8309b144da8
+VERSION=0482a89a81f3f3de8f61ac620abcd79c116e8a9d
 GIT_DIR=$(TARBALLS_LOCATION)/$(LIBNAME).git
 BASE_URL=git://github.com/opdenkamp/$(LIBNAME).git
 DYLIB=$(PLATFORM)/addons/pvr.demo/.libs/libpvrdemo-addon.so
@@ -22,7 +22,7 @@ $(GIT_DIR)/HEAD:
 	cd $(TARBALLS_LOCATION); git clone --bare $(BASE_URL)
 
 $(GIT_DIR)/current/$(VERSION): $(GIT_DIR)/HEAD $(DEPS)
-	git rev-list -1 $(VERSION) >/dev/null || git fetch -a
+	git rev-list -1 $(VERSION) >/dev/null || git fetch origin "+refs/heads/*:refs/remotes/origin/*"
 	git rev-list -1 $(VERSION) >/dev/null
 	rm -rf $(GIT_DIR)/current; mkdir -p $(GIT_DIR)/current
 	touch $@

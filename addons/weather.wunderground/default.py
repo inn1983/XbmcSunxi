@@ -167,7 +167,8 @@ def clear():
 
 def parse_data(json):
     try:
-        reply = json.replace('"-999%"','""').replace('"-9999.00"','""').replace('"-9998"','""').replace('"NA"','""').replace(' <? END CHANCE OF PRECIP\n\n?>','') # wu api bug
+        raw = json.replace('<br>',' ').replace('&auml;','ä') # wu api bugs
+        reply = raw.replace('"-999%"','""').replace('"-9999.00"','""').replace('"-9998"','""').replace('"NA"','""') # wu will change these to null responses in the future
         data = simplejson.loads(reply)
     except:
         log('failed to parse weather data')
@@ -336,11 +337,11 @@ def properties(data,loc):
 # weekend properties
     set_property('Weekend.IsFetched', 'true')
     if __addon__.getSetting('Weekend') == '2':
-        weekend = (3,4,5)
+        weekend = [4,5]
     elif __addon__.getSetting('Weekend') == '1':
-        weekend = (4,5,6)
+        weekend = [5,6]
     else:
-        weekend = (5,6,7)
+        weekend = [6,7]
     count = 0
     for item in data['forecast']['simpleforecast']['forecastday']:
         if date(item['date']['year'], item['date']['month'], item['date']['day']).isoweekday() in weekend:
@@ -411,7 +412,7 @@ def properties(data,loc):
                     set_property('Weekend.%i.LongOutlookDay'   % (count+1), data['forecast']['txt_forecast']['forecastday'][2*count]['fcttext_metric'])
                     set_property('Weekend.%i.LongOutlookNight' % (count+1), data['forecast']['txt_forecast']['forecastday'][2*count+1]['fcttext_metric'])
             count += 1
-            if count == 3:
+            if count == 2:
                 break
 # 36 hour properties
     set_property('36Hour.IsFetched', 'true')

@@ -1,5 +1,5 @@
 # XBMC Media Center language file
-# XBMC-core v12.0-BETA1
+# XBMC-core v12.0-RC1
 msgid ""
 msgstr ""
 "Project-Id-Version: XBMC Main Translation Project (Frodo)\n"
@@ -6016,7 +6016,7 @@ msgstr "Радио"
 
 msgctxt "#19022"
 msgid "Hidden"
-msgstr "Скрытый"
+msgstr "Скрытые"
 
 msgctxt "#19023"
 msgid "TV channels"
@@ -6988,7 +6988,7 @@ msgstr "Ошибка записи"
 
 msgctxt "#19279"
 msgid "Client specific"
-msgstr "Клиентск."
+msgstr "Клиент"
 
 msgctxt "#19280"
 msgid "Client specific settings"
@@ -10212,7 +10212,7 @@ msgstr "Сведения"
 
 msgctxt "#33030"
 msgid "Outlook"
-msgstr "Наблюдение"
+msgstr "Прогноз"
 
 msgctxt "#33031"
 msgid "Coverflow"
@@ -10582,9 +10582,9 @@ msgctxt "#35100"
 msgid "Enable joystick and gamepad support"
 msgstr "Включить поддержку джойстика и геймпада"
 
-msgctxt "#35101"
-msgid "Disable joystick when iMON is present"
-msgstr "Отключить джойстик при наличии iMON"
+msgctxt "#35102"
+msgid "Disable joystick when device is present"
+msgstr "Отключить джойстик, когда присутствует это устройство"
 
 msgctxt "#35500"
 msgid "Location"
@@ -10753,3 +10753,7 @@ msgstr "ТВ и АВ-ресивер (явно)"
 msgctxt "#36040"
 msgid "Unsupported libCEC interface version. %x is lower than the version XBMC supports (%x)"
 msgstr "Неподдерживаемая версия интерфейса libCEC. %x меньше, чем версия, поддерживаемая XBMC (%x)"
+
+msgctxt "#36041"
+msgid "* Item folder"
+msgstr "* Папка объекта"

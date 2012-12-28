@@ -24,11 +24,13 @@
  */
 
 #include "settings/GUISettings.h"
+#include "settings/AdvancedSettings.h"
 #include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "dialogs/GUIDialogOK.h"
 #include "music/tags/MusicInfoTag.h"
 #include "utils/log.h"
+#include "Util.h"
 #include "utils/StringUtils.h"
 #include "threads/SingleLock.h"
 
@@ -106,7 +108,7 @@ CPVRChannelGroup::CPVRChannelGroup(const CPVRChannelGroup &group)
     m_members.push_back(group.m_members.at(iPtr));
 }
 
-int CPVRChannelGroup::Load(void)
+bool CPVRChannelGroup::Load(void)
 {
   /* make sure this container is empty before loading */
   Unload();
@@ -118,7 +120,12 @@ int CPVRChannelGroup::Load(void)
   CLog::Log(LOGDEBUG, "PVRChannelGroup - %s - %d channels loaded from the database for group '%s'",
         __FUNCTION__, iChannelCount, m_strGroupName.c_str());
 
-  Update();
+  if (!Update())
+  {
+    CLog::Log(LOGERROR, "PVRChannelGroup - %s - failed to update channels", __FUNCTION__);
+    return false;
+  }
+
   if (Size() - iChannelCount > 0)
   {
     CLog::Log(LOGDEBUG, "PVRChannelGroup - %s - %d channels added from clients to group '%s'",
@@ -130,7 +137,7 @@ int CPVRChannelGroup::Load(void)
   g_guiSettings.RegisterObserver(this);
   m_bLoaded = true;
 
-  return Size();
+  return true;
 }
 
 void CPVRChannelGroup::Unload(void)
@@ -144,7 +151,7 @@ bool CPVRChannelGroup::Update(void)
 {
   if (GroupType() == PVR_GROUP_TYPE_USER_DEFINED ||
       !g_guiSettings.GetBool("pvrmanager.syncchannelgroups"))
-    return false;
+    return true;
 
   CPVRChannelGroup PVRChannels_tmp(m_bRadio, m_iGroupId, m_strGroupName);
   PVRChannels_tmp.LoadFromClients();
@@ -221,7 +228,7 @@ bool CPVRChannelGroup::SetChannelIconPath(CPVRChannelPtr channel, const std::str
 {
   if (CFile::Exists(strIconPath))
   {
-    channel->SetIconPath(strIconPath);
+    channel->SetIconPath(strIconPath, g_advancedSettings.m_bPVRAutoScanIconsUserSet);
     return true;
   }
   return false;
@@ -247,10 +254,10 @@ void CPVRChannelGroup::SearchAndSetChannelIcons(bool bUpdateDb /* = false */)
       continue;
 
     CStdString strBasePath = g_guiSettings.GetString("pvrmenu.iconpath");
-    CStdString strChannelName = groupMember.channel->ClientChannelName();
+    CStdString strSanitizedChannelName = CUtil::MakeLegalFileName(groupMember.channel->ClientChannelName());
 
-    CStdString strIconPath = strBasePath + groupMember.channel->ClientChannelName();
-    CStdString strIconPathLower = strBasePath + strChannelName.ToLower();
+    CStdString strIconPath = strBasePath + strSanitizedChannelName;
+    CStdString strIconPathLower = strBasePath + strSanitizedChannelName.ToLower();
     CStdString strIconPathUid;
     strIconPathUid.Format("%08d", groupMember.channel->UniqueID());
     strIconPathUid = URIUtils::AddFileToFolder(strBasePath, strIconPathUid);
@@ -569,14 +576,10 @@ int CPVRChannelGroup::LoadFromDb(bool bCompress /* = false */)
   return Size() - iChannelCount;
 }
 
-int CPVRChannelGroup::LoadFromClients(void)
+bool CPVRChannelGroup::LoadFromClients(void)
 {
-  int iCurSize = Size();
-
   /* get the channels from the backends */
-  g_PVRClients->GetChannelGroupMembers(this);
-
-  return Size() - iCurSize;
+  return g_PVRClients->GetChannelGroupMembers(this) == PVR_ERROR_NO_ERROR;
 }
 
 bool CPVRChannelGroup::AddAndUpdateChannels(const CPVRChannelGroup &channels, bool bUseBackendChannelNumbers)
@@ -1067,10 +1070,16 @@ int CPVRChannelGroup::GetEPGAll(CFileItemList &results)
 
   for (unsigned int iChannelPtr = 0; iChannelPtr < m_members.size(); iChannelPtr++)
   {
-    if (!m_members.at(iChannelPtr).channel || m_members.at(iChannelPtr).channel->IsHidden())
-      continue;
-
-    m_members.at(iChannelPtr).channel->GetEPG(results);
+    if (m_members.at(iChannelPtr).channel && !m_members.at(iChannelPtr).channel->IsHidden())
+    {
+      CEpg* epg = m_members.at(iChannelPtr).channel->GetEPG();
+      if (epg)
+      {
+        // XXX channel pointers aren't set in some occasions. this works around the issue, but is not very nice
+        epg->SetChannel(m_members.at(iChannelPtr).channel);
+        epg->Get(results);
+      }
+    }
   }
 
   return results.Size() - iInitialSize;

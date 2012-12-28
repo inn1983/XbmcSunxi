@@ -1412,25 +1412,29 @@ bool CFileItem::IsSamePath(const CFileItem *item) const
   if (IsMusicDb() && HasMusicInfoTag())
   {
     CFileItem dbItem(m_musicInfoTag->GetURL(), false);
-    dbItem.SetProperty("item_start", GetProperty("item_start"));
+    if (HasProperty("item_start"))
+      dbItem.SetProperty("item_start", GetProperty("item_start"));
     return dbItem.IsSamePath(item);
   }
   if (IsVideoDb() && HasVideoInfoTag())
   {
     CFileItem dbItem(m_videoInfoTag->m_strFileNameAndPath, false);
-    dbItem.SetProperty("item_start", GetProperty("item_start"));
+    if (HasProperty("item_start"))
+      dbItem.SetProperty("item_start", GetProperty("item_start"));
     return dbItem.IsSamePath(item);
   }
   if (item->IsMusicDb() && item->HasMusicInfoTag())
   {
     CFileItem dbItem(item->m_musicInfoTag->GetURL(), false);
-    dbItem.SetProperty("item_start", item->GetProperty("item_start"));
+    if (item->HasProperty("item_start"))
+      dbItem.SetProperty("item_start", item->GetProperty("item_start"));
     return IsSamePath(&dbItem);
   }
   if (item->IsVideoDb() && item->HasVideoInfoTag())
   {
     CFileItem dbItem(item->m_videoInfoTag->m_strFileNameAndPath, false);
-    dbItem.SetProperty("item_start", item->GetProperty("item_start"));
+    if (item->HasProperty("item_start"))
+      dbItem.SetProperty("item_start", item->GetProperty("item_start"));
     return IsSamePath(&dbItem);
   }
   if (HasProperty("original_listitem_url"))
@@ -1448,6 +1452,9 @@ void CFileItem::UpdateInfo(const CFileItem &item, bool replaceLabels /*=true*/)
   if (item.HasVideoInfoTag())
   { // copy info across (TODO: premiered info is normally stored in m_dateTime by the db)
     *GetVideoInfoTag() = *item.GetVideoInfoTag();
+    // preferably use some information from PVR info tag if available
+    if (HasPVRRecordingInfoTag())
+      GetPVRRecordingInfoTag()->CopyClientInfo(GetVideoInfoTag());
     SetOverlayImage(ICON_OVERLAY_UNWATCHED, GetVideoInfoTag()->m_playCount > 0);
   }
   if (item.HasMusicInfoTag())
@@ -1468,7 +1475,8 @@ void CFileItem::UpdateInfo(const CFileItem &item, bool replaceLabels /*=true*/)
 
 void CFileItem::SetFromVideoInfoTag(const CVideoInfoTag &video)
 {
-  SetLabel(video.m_strTitle);
+  if (!video.m_strTitle.empty())
+    SetLabel(video.m_strTitle);
   if (video.m_strFileNameAndPath.IsEmpty())
   {
     m_strPath = video.m_strPath;
@@ -1489,7 +1497,8 @@ void CFileItem::SetFromVideoInfoTag(const CVideoInfoTag &video)
 
 void CFileItem::SetFromAlbum(const CAlbum &album)
 {
-  SetLabel(album.strAlbum);
+  if (!album.strAlbum.empty())
+    SetLabel(album.strAlbum);
   m_bIsFolder = true;
   m_strLabel2 = StringUtils::Join(album.artist, g_advancedSettings.m_musicItemSeparator);
   GetMusicInfoTag()->SetAlbum(album);
@@ -1499,8 +1508,10 @@ void CFileItem::SetFromAlbum(const CAlbum &album)
 
 void CFileItem::SetFromSong(const CSong &song)
 {
-  SetLabel(song.strTitle);
-  m_strPath = song.strFileName;
+  if (!song.strTitle.empty())
+    SetLabel(song.strTitle);
+  if (!song.strFileName.empty())
+    m_strPath = song.strFileName;
   GetMusicInfoTag()->SetSong(song);
   m_lStartOffset = song.iStartOffset;
   m_lStartPartNumber = 1;
@@ -2622,6 +2633,8 @@ bool CFileItemList::AlwaysCache() const
 CStdString CFileItem::GetUserMusicThumb(bool alwaysCheckRemote /* = false */, bool fallbackToFolder /* = false */) const
 {
   if (m_strPath.IsEmpty()
+   || m_strPath.Left(19).Equals("newsmartplaylist://")
+   || m_strPath.Left(14).Equals("newplaylist://")
    || m_bIsShareOrDrive
    || IsInternetStream()
    || URIUtils::IsUPnP(m_strPath)
@@ -2713,6 +2726,8 @@ CStdString CFileItem::FindLocalArt(const std::string &artFile, bool useFolder) c
 {
   // ignore a bunch that are meaningless
   if (m_strPath.empty()
+   || m_strPath.Left(19).Equals("newsmartplaylist://")
+   || m_strPath.Left(14).Equals("newplaylist://")
    || m_bIsShareOrDrive
    || IsInternetStream()
    || URIUtils::IsUPnP(m_strPath)

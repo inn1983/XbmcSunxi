@@ -1355,6 +1355,13 @@ void CGUIMediaWindow::SetHistoryForPath(const CStdString& strDirectory)
         }
       }
 
+      if (URIUtils::IsVideoDb(strPath))
+      {
+        CURL url(strParentPath);
+        url.SetOptions(""); // clear any URL options from recreated parent path
+        strParentPath = url.Get();
+      }
+
       URIUtils::AddSlashAtEnd(strPath);
       m_history.AddPathFront(strPath);
       m_history.SetSelectedItem(strPath, strParentPath);
@@ -1405,7 +1412,6 @@ bool CGUIMediaWindow::OnPlayAndQueueMedia(const CFileItemPtr &item)
     g_playlistPlayer.ClearPlaylist(iPlaylist);
     g_playlistPlayer.Reset();
     int mediaToPlay = 0;
-    CFileItemList queueItems;
     for ( int i = 0; i < m_vecItems->Size(); i++ )
     {
       CFileItemPtr nItem = m_vecItems->Get(i);
@@ -1414,14 +1420,13 @@ bool CGUIMediaWindow::OnPlayAndQueueMedia(const CFileItemPtr &item)
         continue;
 
       if (!nItem->IsPlayList() && !nItem->IsZIP() && !nItem->IsRAR())
-        queueItems.Add(nItem);
+        g_playlistPlayer.Add(iPlaylist, nItem);
 
-      if (nItem == item)
+      if (item->IsSamePath(nItem.get()))
       { // item that was clicked
-        mediaToPlay = queueItems.Size() - 1;
+        mediaToPlay = g_playlistPlayer.GetPlaylist(iPlaylist).size() - 1;
       }
     }
-    g_playlistPlayer.Add(iPlaylist, queueItems);
 
     // Save current window and directory to know where the selected item was
     if (m_guiState.get())
