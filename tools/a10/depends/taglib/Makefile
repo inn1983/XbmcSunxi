@@ -28,10 +28,7 @@ all: .installed
 	touch .extracted
 
 $(TARBALLS)/$(TARBALL):
-	wget $(LOCATION)/$(TARBALL) -O $(TARBALLS)/$(TARBALL)
+	$(WGET) $(LOCATION)/$(TARBALL) -O $(TARBALLS)/$(TARBALL)
 	
 clean:
 	rm -rf .installed .builded .configured .extracted taglib*
-	
-	
-	
