@@ -742,12 +742,7 @@ void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list)
        * found by the enumeration process. Skip them as well ("hw", "dmix",
        * "plughw", "dsnoop"). */
 
-      else
-#ifndef ALLWINNERA10
-        /*
-         * empat0: wee need the devices on allwinner 3.0.36 kernel
-         */
-           if (baseName != "default"
+      else if (baseName != "default"
             && baseName != "sysdefault"
             && baseName != "surround40"
             && baseName != "surround41"
@@ -758,9 +753,17 @@ void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list)
             && baseName != "dmix"
             && baseName != "plughw"
             && baseName != "dsnoop")
-#endif
       {
         EnumerateDevice(list, name, desc ? desc : name, config);
+      }
+      else
+      {
+        /* sun4i whilelist */
+        std::string strDevice = std::string(name);
+        size_t found = strDevice.find("sun4i");
+        
+        if(found != std::string::npos)
+          EnumerateDevice(list, name, desc ? desc : name, config);
       }
     }
     free(io);
@@ -862,6 +865,10 @@ AEDeviceType CAESinkALSA::AEDeviceTypeFromName(const std::string &name)
     return AE_DEVTYPE_HDMI;
   else if (name.substr(0, 6) == "iec958" || name.substr(0, 5) == "spdif")
     return AE_DEVTYPE_IEC958;
+
+  /* sun4i hdmi device */
+  if(name.find("sun4isndhdmi") != std::string::npos)
+    return AE_DEVTYPE_HDMI;
 
   return AE_DEVTYPE_PCM;
 }
