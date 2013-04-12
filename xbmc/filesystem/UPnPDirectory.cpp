@@ -29,6 +29,7 @@
 #include "video/VideoInfoTag.h"
 #include "FileItem.h"
 #include "utils/log.h"
+#include "utils/URIUtils.h"
 
 using namespace MUSIC_INFO;
 using namespace XFILE;
@@ -414,6 +415,7 @@ CUPnPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
 
             CStdString id = (char*) (*entry)->m_ObjectID;
             CURL::Encode(id);
+            URIUtils::AddSlashAtEnd(id);
             pItem->SetPath(CStdString((const char*) "upnp://" + uuid + "/" + id.c_str()));
 
             // if it's a container, format a string as upnp://uuid/object_id
@@ -539,7 +541,12 @@ CUPnPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
         std::string content = GetContentMapping(max_string);
         items.SetContent(content);
         if (content == "unknown")
-          items.AddSortMethod(SORT_METHOD_NONE, 551, LABEL_MASKS("%L", "%I", "%L", ""));
+        {
+          items.AddSortMethod(SORT_METHOD_UNSORTED, 571, LABEL_MASKS("%L", "%I", "%L", ""));
+          items.AddSortMethod(SORT_METHOD_LABEL_IGNORE_FOLDERS, 551, LABEL_MASKS("%L", "%I", "%L", ""));
+          items.AddSortMethod(SORT_METHOD_SIZE, 553, LABEL_MASKS("%L", "%I", "%L", "%I"));
+          items.AddSortMethod(SORT_METHOD_DATE, 552, LABEL_MASKS("%L", "%J", "%L", "%J"));
+        }
     }
 
 cleanup:
