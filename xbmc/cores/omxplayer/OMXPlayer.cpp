@@ -516,6 +516,9 @@ bool COMXPlayer::CloseFile()
   if(m_pSubtitleDemuxer)
     m_pSubtitleDemuxer->Abort();
 
+  if(m_pInputStream)
+    m_pInputStream->Abort();
+
   CLog::Log(LOGDEBUG, "COMXPlayer: waiting for threads to exit");
 
   // wait for the main thread to finish up
@@ -808,6 +811,13 @@ bool COMXPlayer::ReadPacket(DemuxPacket*& packet, CDemuxStream*& stream)
         m_SelectionStreams.Clear(STREAM_NONE, STREAM_SOURCE_DEMUX);
         m_SelectionStreams.Update(m_pInputStream, m_pDemuxer);
         OpenDefaultStreams(false);
+
+        // reevaluate HasVideo/Audio, we may have switched from/to a radio channel
+        if(m_CurrentVideo.id < 0)
+          m_HasVideo = false;
+        if(m_CurrentAudio.id < 0)
+          m_HasAudio = false;
+
         return true;
     }
 
@@ -933,6 +943,7 @@ void COMXPlayer::Process()
 {
   bool bOmxWaitVideo = false;
   bool bOmxWaitAudio = false;
+  bool bOmxSentEOFs = false;
 
   if (!OpenInputStream())
   {
@@ -1219,28 +1230,24 @@ void COMXPlayer::Process()
       }
 
       // make sure we tell all players to finish it's data
-      if(m_CurrentAudio.inited)
+      if (!bOmxSentEOFs)
       {
-        m_player_audio.SendMessage   (new CDVDMsg(CDVDMsg::GENERAL_EOF));
-        bOmxWaitAudio = true;
+        if(m_CurrentAudio.inited)
+        {
+          m_player_audio.SendMessage   (new CDVDMsg(CDVDMsg::GENERAL_EOF));
+          bOmxWaitAudio = true;
+        }
+        if(m_CurrentVideo.inited)
+        {
+          m_player_video.SendMessage   (new CDVDMsg(CDVDMsg::GENERAL_EOF));
+          bOmxWaitVideo = true;
+        }
+        if(m_CurrentSubtitle.inited)
+          m_player_subtitle.SendMessage(new CDVDMsg(CDVDMsg::GENERAL_EOF));
+        if(m_CurrentTeletext.inited)
+          m_player_teletext.SendMessage(new CDVDMsg(CDVDMsg::GENERAL_EOF));
+        bOmxSentEOFs = true;
       }
-      if(m_CurrentVideo.inited)
-      {
-        m_player_video.SendMessage   (new CDVDMsg(CDVDMsg::GENERAL_EOF));
-        bOmxWaitVideo = true;
-      }
-      if(m_CurrentSubtitle.inited)
-        m_player_subtitle.SendMessage(new CDVDMsg(CDVDMsg::GENERAL_EOF));
-      if(m_CurrentTeletext.inited)
-        m_player_teletext.SendMessage(new CDVDMsg(CDVDMsg::GENERAL_EOF));
-      m_CurrentAudio.inited    = false;
-      m_CurrentVideo.inited    = false;
-      m_CurrentSubtitle.inited = false;
-      m_CurrentTeletext.inited = false;
-      m_CurrentAudio.started    = false;
-      m_CurrentVideo.started    = false;
-      m_CurrentSubtitle.started = false;
-      m_CurrentTeletext.started = false;
 
       // if we are caching, start playing it again
       SetCaching(CACHESTATE_DONE);
@@ -1268,6 +1275,15 @@ void COMXPlayer::Process()
       if (!m_pInputStream->IsEOF())
         CLog::Log(LOGINFO, "%s - eof reading from demuxer", __FUNCTION__);
 
+      m_CurrentAudio.inited    = false;
+      m_CurrentVideo.inited    = false;
+      m_CurrentSubtitle.inited = false;
+      m_CurrentTeletext.inited = false;
+      m_CurrentAudio.started    = false;
+      m_CurrentVideo.started    = false;
+      m_CurrentSubtitle.started = false;
+      m_CurrentTeletext.started = false;
+
       break;
     }
 
@@ -1283,7 +1299,7 @@ void COMXPlayer::Process()
     if (IsBetterStream(m_CurrentSubtitle, pStream)) OpenSubtitleStream(pStream->iId, pStream->source);
     if (IsBetterStream(m_CurrentTeletext, pStream)) OpenTeletextStream(pStream->iId, pStream->source);
 
-    if(m_change_volume)
+    if(m_change_volume && m_CurrentAudio.started)
     {
       m_player_audio.SetCurrentVolume(m_current_mute ? VOLUME_MINIMUM : m_current_volume);
       m_change_volume = false;
