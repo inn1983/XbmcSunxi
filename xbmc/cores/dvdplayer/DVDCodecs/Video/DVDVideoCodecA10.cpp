@@ -112,6 +112,8 @@ bool CDVDVideoCodecA10::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
 
 #ifdef MEDIAINFO
   CLog::Log(LOGDEBUG, "A10: MEDIAINFO: fpsrate %d / fpsscale %d\n", m_hints.fpsrate, m_hints.fpsscale);
+  CLog::Log(LOGDEBUG, "A10: MEDIAINFO: Framerate %d \n", m_info.frame_rate);
+  CLog::Log(LOGDEBUG, "A10: MEDIAINFO: Frame Duration %d \n", m_info.frame_duration);
   CLog::Log(LOGDEBUG, "A10: MEDIAINFO: CodecID %d \n", m_hints.codec);
   CLog::Log(LOGDEBUG, "A10: MEDIAINFO: StreamType %d \n", m_hints.type);
   CLog::Log(LOGDEBUG, "A10: MEDIAINFO: Level %d \n", m_hints.level);
@@ -292,6 +294,10 @@ bool CDVDVideoCodecA10::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     CLog::Log(LOGERROR, "A10: codecid %d is unknown.\n", m_hints.codec);
     return false;
   }
+
+  CLog::Log(LOGNOTICE, "A10: CEDARV_FORMAT: %d\n", m_info.format);
+  CLog::Log(LOGNOTICE, "A10: CEDARV_SUBFORMAT: %d\n", m_info.sub_format);
+  CLog::Log(LOGNOTICE, "A10: CEDARV_CONTAINERFORMAT: %d\n", m_info.container_format);
 
   return DoOpen();
 }
