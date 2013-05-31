@@ -27,7 +27,7 @@ static long g_cedaropen = 0;
 #define A10ENABLE_MPEG1         CODEC_OK
 #define A10ENABLE_MPEG2         CODEC_OK
 #define A10ENABLE_H264          CODEC_OK
-#define A10ENABLE_H263          CODEC_BAD //fails completely
+#define A10ENABLE_H263          CODEC_OK //fails completely
 #define A10ENABLE_VC1_WVC1      CODEC_OK
 #define A10ENABLE_VP6           CODEC_OK
 #define A10ENABLE_VP8           CODEC_OK
@@ -36,8 +36,8 @@ static long g_cedaropen = 0;
 #define A10ENABLE_WMV1          CODEC_OK
 #define A10ENABLE_WMV2          CODEC_OK
 #define A10ENABLE_WMV3          CODEC_OK
-#define A10ENABLE_MPEG4V1       CODEC_BAD //??
-#define A10ENABLE_MPEG4V2       CODEC_BAD //fails completely
+#define A10ENABLE_MPEG4V1       CODEC_OK //??
+#define A10ENABLE_MPEG4V2       CODEC_OK //fails completely
 #define A10ENABLE_MPEG4V3       CODEC_OK
 #define A10ENABLE_DIVX4         CODEC_OK
 #define A10ENABLE_DIVX5         CODEC_OK
