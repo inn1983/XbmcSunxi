@@ -4,7 +4,8 @@ LCLPREFIX=$(shell echo $(XBMCPREFIX) | sed 's/^\///g')
 
 DEB=xbmca10.deb
 TARBALL1=xbmca10deb.tar.gz
-TARBALL2=xbmca10.tar.gz
+TARBALL2_PFX=xbmca10_
+TARBALL2_SFX=tar.bz2
 
 all: $(TARBALL1)
 
@@ -25,7 +26,7 @@ $(TARBALL1): root/DEBIAN/control $(XBMCPREFIX)/lib/xbmc/xbmc.bin README
 
 tarball: $(XBMCPREFIX)/lib/xbmc/xbmc.bin
 	(	rm -rf tmp &&\
-		mkdir tmp &&\
+		mkdir -p tmp &&\
 		cd tmp &&\
 		tar cf - $(XBMCPREFIX) | tar xf - &&\
 		rm -rf $(LCLPREFIX)/include &&\
@@ -34,7 +35,8 @@ tarball: $(XBMCPREFIX)/lib/xbmc/xbmc.bin
 		$(STRIP) --strip-unneeded `find . -name xbmc.bin -print` &&\
 		$(STRIP) --strip-unneeded `find . -name *.so -print` \
 	)
-	tar -czvf $(TARBALL2) -C tmp .
+	mkdir -p $(PUBLIC)/xbmc &&\
+	tar -cjvf $(PUBLIC)/xbmc/$(TARBALL2_PFX)$(shell date +%Y%m%d"-"%H%M).$(TARBALL2_SFX) -C tmp .
 
 clean:
 	rm -rf tmp
