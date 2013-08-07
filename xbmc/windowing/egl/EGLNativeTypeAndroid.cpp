@@ -113,7 +113,7 @@ bool CEGLNativeTypeAndroid::GetNativeResolution(RESOLUTION_INFO *res) const
   ANativeWindow_release((EGLNativeWindowType)m_nativeWindow);
 
 #ifdef ALLWINNERA10
-  res->fRefresgRate = g_refreshRate;
+  res->fRefreshRate = g_refreshRate;
 #else
   res->fRefreshRate = 60;
 #endif
