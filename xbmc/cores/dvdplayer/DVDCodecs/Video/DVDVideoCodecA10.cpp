@@ -538,7 +538,7 @@ void CDVDVideoCodecA10::Reset()
   cedarv_picture_t pict;
 
   CLog::Log(LOGDEBUG, "A10: reset requested");
-  m_hcedarv->ioctrl(m_hcedarv, CEDARV_COMMAND_FLUSH, 0);
+  m_hcedarv->ioctrl(m_hcedarv, CEDARV_COMMAND_RESET, 0);
   while(m_hcedarv->display_request(m_hcedarv, &pict) == 0)
     m_hcedarv->display_release(m_hcedarv, pict.id);
   A10VLFreeQueue();
