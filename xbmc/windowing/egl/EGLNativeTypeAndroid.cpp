@@ -32,8 +32,8 @@ CEGLNativeTypeAndroid::CEGLNativeTypeAndroid()
 {
 #if defined(ALLWINNERA10) && defined(TARGET_ANDROID)
   int width, height;
-
-  A10VLInit(width, height);
+  static double g_refreshRate;
+  A10VLInit(width, height, g_refreshRate);
 #endif
 }
 
@@ -112,7 +112,11 @@ bool CEGLNativeTypeAndroid::GetNativeResolution(RESOLUTION_INFO *res) const
   res->iHeight= ANativeWindow_getHeight((EGLNativeWindowType)m_nativeWindow);
   ANativeWindow_release((EGLNativeWindowType)m_nativeWindow);
 
+#ifdef ALLWINNERA10
+  res->fRefresgRate = g_refreshRate;
+#else
   res->fRefreshRate = 60;
+#endif
   res->dwFlags= D3DPRESENTFLAG_PROGRESSIVE;
   res->iScreen       = 0;
   res->bFullScreen   = true;
