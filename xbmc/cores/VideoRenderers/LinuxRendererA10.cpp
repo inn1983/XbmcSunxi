@@ -1440,6 +1440,44 @@ static int             g_rdidx;
 static A10VLQueueItem  g_dispq[DISPQS];
 static pthread_mutex_t g_dispq_mutex;
 
+static bool A10VLBlueScreenFix()
+{
+  int hlayer;
+  __disp_layer_info_t layera;
+  unsigned long args[4];
+
+  args[0] = g_screenid;
+  args[1] = DISP_LAYER_WORK_MODE_SCALER;
+  args[2] = 0;
+  args[3] = 0;
+  hlayer = ioctl(g_hdisp, DISP_CMD_LAYER_REQUEST, args);
+  if (hlayer <= 0)
+  {
+    CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_REQUEST failed.\n");
+    return false;
+  }
+
+  args[0] = g_screenid;
+  args[1] = hlayer;
+  args[2] = (unsigned long) &layera;
+  args[3] = 0;
+  ioctl(g_hdisp, DISP_CMD_LAYER_GET_PARA, args);
+
+  layera.mode = DISP_LAYER_WORK_MODE_SCALER;
+  layera.fb.mode = DISP_MOD_MB_UV_COMBINED;
+  layera.fb.format = DISP_FORMAT_YUV420;
+  layera.fb.seq = DISP_SEQ_UVUV;
+  ioctl(g_hdisp, DISP_CMD_LAYER_SET_PARA, args);
+
+  args[0] = g_screenid;
+  args[1] = hlayer;
+  args[2] = 0;
+  args[3] = 0;
+  ioctl(g_hdisp, DISP_CMD_LAYER_RELEASE, args);
+
+  return true;
+}
+
 bool A10VLInit(int &width, int &height, double &refreshRate)
 {
   unsigned long       args[4];
@@ -1538,6 +1576,10 @@ bool A10VLInit(int &width, int &height, double &refreshRate)
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_LAYER_RELEASE, args);
   }
+
+  // Hack: avoid blue picture background
+  if (!A10VLBlueScreenFix())
+    return false;
 
   args[0] = g_screenid;
   args[1] = DISP_LAYER_WORK_MODE_SCALER;
