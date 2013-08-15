@@ -26,13 +26,13 @@
 #include "android/activity/XBMCApp.h"
 #ifdef ALLWINNERA10
 #include "cores/VideoRenderers/LinuxRendererA10.h"
+static double g_refreshRate;
 #endif
 #endif
 CEGLNativeTypeAndroid::CEGLNativeTypeAndroid()
 {
 #if defined(ALLWINNERA10) && defined(TARGET_ANDROID)
   int width, height;
-  static double g_refreshRate;
   A10VLInit(width, height, g_refreshRate);
 #endif
 }
