@@ -444,6 +444,46 @@ bool CJpegIO::Decode(const unsigned char *pixels, unsigned int pitch, unsigned i
   return true;
 }
 
+/*Decode the jpeg to yuv.*/
+bool CJpegIO::DecodeYUV(unsigned char **pixels, unsigned int pitch, unsigned int format)
+{
+	unsigned char *dstY = (unsigned char*)pixels[0];
+	unsigned char *dstU = (unsigned char*)pixels[1];
+	unsigned char *dstV = (unsigned char*)pixels[2];
+
+	struct my_error_mgr jerr;
+	m_cinfo.err = jpeg_std_error(&jerr.pub);
+	jerr.pub.error_exit = jpeg_error_exit;
+
+	m_cinfo.out_color_space = JCS_RGB;
+	if (setjmp(jerr.setjmp_buffer))
+  	{
+    	jpeg_destroy_decompress(&m_cinfo);
+    	return false;
+  	}
+	else{
+		jpeg_start_decompress(&m_cinfo);
+		unsigned char* row = new unsigned char[m_width * 3];
+		while (m_cinfo.output_scanline < m_height)
+      	{
+        	jpeg_read_scanlines(&m_cinfo, &row, 1);
+			unsigned char *src2 = row;
+			for (unsigned int x = 0; x < m_width; x++, src2 += 3)
+        	{
+          		*dstY++ = src2[0];
+				*dstU++ = src2[1];
+				*dstV++ = src2[2];
+        	}
+
+      	}
+		delete[] row;
+	}
+	jpeg_finish_decompress(&m_cinfo);
+	return true;
+
+}
+
+
 bool CJpegIO::CreateThumbnail(const CStdString& sourceFile, const CStdString& destFile, int minx, int miny, bool rotateExif)
 {
   //Copy sourceFile to buffer, pass to CreateThumbnailFromMemory for decode+re-encode

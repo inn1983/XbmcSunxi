@@ -52,6 +52,7 @@ public:
   void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
   void Render();
   void Close();
+  void CloseNoDel();	//added by inn. do not delete the m_pImage
   bool IsFinished() const { return m_bIsFinished;};
   bool DrawNextImage() const { return m_bDrawNextImage;};
 
@@ -76,6 +77,7 @@ public:
 
   void Move(float dX, float dY);
   float GetZoom() const { return m_fZoomAmount;};
+  void RenderA10();	//for A10DISP
 
   bool m_bIsComic;
   bool m_bCanMoveHorizontally;
@@ -124,6 +126,8 @@ private:
   bool m_bNoEffect;
   bool m_bFullSize;
   bool m_bTransistionImmediately;
+  bool m_bImageUpdate;
+  //cedarv_picture_t m_cedarpic;
 
   CCriticalSection m_textureAccess;
 };

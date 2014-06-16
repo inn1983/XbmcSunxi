@@ -74,6 +74,7 @@ SRCS += TextureManager.cpp
 SRCS += VisibleEffect.cpp
 SRCS += XBTF.cpp
 SRCS += XBTFReader.cpp
+SRCS+= TextureA10.cpp
 
 ifeq (@USE_OPENGL@,1)
 SRCS += TextureGL.cpp

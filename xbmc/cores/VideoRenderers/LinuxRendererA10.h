@@ -36,6 +36,15 @@
 
 extern "C" {
 #include <libcedarv.h>
+//data type for drv_display_sun4i.h
+#define __s32	int
+#define __u32	unsigned int
+#define __u8	unsigned char
+#define __s8	char
+#define __s16	short
+#define __u16	unsigned short
+
+
 #include <drv_display_sun4i.h>
 #ifndef CEDARV_FRAME_HAS_PHY_ADDR
 #include <os_adapter.h>
@@ -301,5 +310,20 @@ void A10VLFreeQueue();
 void A10VLDisplayQueueItem(A10VLQueueItem *pItem, CRect &srcRect, CRect &dstRect);
 
 int  A10VLDisplayPicture(cedarv_picture_t &pict, int refnr, CRect &srcRect, CRect &dstRect);
+int A10VLDisplaySildeShow(cedarv_picture_t &pict, int refnr, CRect &srcRect, CRect &dstRect);
+int A10GetDispHandle();
+int A10GetLayer();
+
+int A10disp_set_para(const uint32_t luma_buffer, const uint32_t chroma_buffer,
+			const int color_format, const int width, const int height,
+			const int out_x, const int out_y, const int out_width, const int out_height, bool bUpdate);
+
+extern CRect  g_srcRect;
+extern CRect g_dstRect;
+extern pthread_mutex_t g_dispq_mutex;
+
+#define DRAM_OFFSET (0x40000000)
+#define COLOR_YUV420 (0)
+#define COLOR_YUV422 (2)
 
 #endif

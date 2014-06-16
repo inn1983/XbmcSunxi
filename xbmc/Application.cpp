@@ -335,10 +335,6 @@
 #include "input/SDLJoystick.h"
 #endif
 
-#if defined(TARGET_ANDROID)
-#include "android/activity/XBMCApp.h"
-#endif
-
 using namespace std;
 using namespace ADDON;
 using namespace XFILE;
@@ -438,8 +434,10 @@ CApplication::CApplication(void)
   m_progressTrackingPlayCountUpdate = false;
   m_currentStackPosition = 0;
   m_lastFrameTime = 0;
+  m_lastFrameTime_64 = 0;	//added by inn
   m_lastRenderTime = 0;
   m_bTestMode = false;
+  m_debugFpsCnt = 0; //added by inn
 }
 
 CApplication::~CApplication(void)
@@ -1536,7 +1534,7 @@ bool CApplication::StartWebServer()
     bool started = false;
     if (m_WebServer.Start(webPort, g_guiSettings.GetString("services.webserverusername"), g_guiSettings.GetString("services.webserverpassword")))
     {
-      std::vector<std::pair<std::string, std::string> > txt;
+      std::map<std::string, std::string> txt;
       started = true;
       // publish web frontend and API services
 #ifdef HAS_WEB_INTERFACE
@@ -1586,19 +1584,19 @@ bool CApplication::StartAirplayServer()
     if (CAirPlayServer::StartServer(listenPort, true))
     {
       CAirPlayServer::SetCredentials(usePassword, password);
-      std::vector<std::pair<std::string, std::string> > txt;
+      std::map<std::string, std::string> txt;
       CNetworkInterface* iface = g_application.getNetwork().GetFirstConnectedInterface();
       if (iface)
       {
-        txt.push_back(std::make_pair("deviceid", iface->GetMacAddress()));
+        txt["deviceid"] = iface->GetMacAddress();
       }
       else
       {
-        txt.push_back(std::make_pair("deviceid", "FF:FF:FF:FF:FF:F2"));
+        txt["deviceid"] = "FF:FF:FF:FF:FF:F2";
       }
-      txt.push_back(std::make_pair("features", "0x77"));
-      txt.push_back(std::make_pair("model", "Xbmc,1"));
-      txt.push_back(std::make_pair("srcvers", AIRPLAY_SERVER_VERSION_STR));
+      txt["features"] = "0x77";
+      txt["model"] = "AppleTV2,1";
+      txt["srcvers"] = AIRPLAY_SERVER_VERSION_STR;
       CZeroconf::GetInstance()->PublishService("servers.airplay", "_airplay._tcp", g_infoManager.GetLabel(SYSTEM_FRIENDLY_NAME), listenPort, txt);
       ret = true;
     }
@@ -1642,7 +1640,7 @@ bool CApplication::StartJSONRPCServer()
   {
     if (CTCPServer::StartServer(g_advancedSettings.m_jsonTcpPort, g_guiSettings.GetBool("services.esallinterfaces")))
     {
-      std::vector<std::pair<std::string, std::string> > txt;
+      std::map<std::string, std::string> txt;
       CZeroconf::GetInstance()->PublishService("servers.jsonrpc-tpc", "_xbmc-jsonrpc._tcp", g_infoManager.GetLabel(SYSTEM_FRIENDLY_NAME), g_advancedSettings.m_jsonTcpPort, txt);
       return true;
     }
@@ -2367,21 +2365,62 @@ void CApplication::Render()
   else
     flip = true;
 
+/*
+  if (g_infoManager.m_debugFpsFlg){	//added by inn
+  	CLog::Log(LOGDEBUG, "line %d:limitFrames is %d", __LINE__, limitFrames);	//added by inn
+  	CLog::Log(LOGDEBUG, "line %d:singleFrameTime is %d", __LINE__, singleFrameTime);	//added by inn
+  }
+*/
+
+#if 0
   //fps limiter, make sure each frame lasts at least singleFrameTime milliseconds
   if (limitFrames || !flip)
   {
-    if (!limitFrames)
+	if (!limitFrames)		//modified by inn
       singleFrameTime = 40; //if not flipping, loop at 25 fps
 
     unsigned int frameTime = now - m_lastFrameTime;
+	if (g_infoManager.m_debugFpsFlg){
+		CLog::Log(LOGDEBUG, "line %d:frameTime is %d,singleFrameTime is %d", __LINE__, frameTime, singleFrameTime);	//added by inn
+	}	//added by inn
+	
     if (frameTime < singleFrameTime)
       Sleep(singleFrameTime - frameTime);
   }
+
+#else
+  /*The swap rate can be fixed to g_advancedSettings.m_ForcedSwapTime without eglSwapInterval. added by inn*/
+  if (g_advancedSettings.m_ForcedSwapTime != 0.0){
+
+		unsigned int curr, frameTime;
+  		curr = SystemClockMillis();
+		unsigned int swapTime = g_advancedSettings.m_ForcedSwapTime;
+  		if(m_lastFrameTime== 0)
+			m_lastFrameTime = curr;
+
+  		/* calculate our next swap timestamp */
+  		frameTime = curr - m_lastFrameTime;
+
+  		if (frameTime < swapTime)
+			Sleep((DWORD)(swapTime - frameTime));
+		//else 
+			//flip = false;
+  }
+
+#endif
+  now = XbmcThreads::SystemClockMillis();	//added by inn
+  unsigned int frameTime_m = now - m_lastFrameTime;	//added by inn
+
+  if (g_infoManager.m_debugFpsFlg)
+  	CLog::Log(LOGDEBUG, "line %d: frameTime_m is %d", __LINE__, frameTime_m);	//added by inn
+
   m_lastFrameTime = XbmcThreads::SystemClockMillis();
 
   if (flip)
     g_graphicsContext.Flip(dirtyRegions);
   CTimeUtils::UpdateFrameTime(flip);
+
+  g_TextureManager.FreeUnusedTextures();
 
   g_renderManager.UpdateResolution();
   g_renderManager.ManageCaptures();
@@ -2392,6 +2431,11 @@ void CApplication::Render()
       m_frameCount--;
   }
   m_frameCond.notifyAll();
+
+  if (g_infoManager.m_debugFpsFlg){	//added by inn
+  	m_debugFpsCnt = 0;
+	g_infoManager.m_debugFpsFlg = 0;
+  }
 }
 
 void CApplication::SetStandAlone(bool value)
@@ -2846,15 +2890,11 @@ bool CApplication::OnAction(const CAction &action)
 
   if (action.GetID() == ACTION_TOGGLE_DIGITAL_ANALOG)
   {
-    // we are only allowed to SetInt to a value supported in GUISettings, so we keep trying until it sticks
-    int mode = g_guiSettings.GetInt("audiooutput.mode");
-    for (int i = 0; i < AUDIO_COUNT; i++)
+    switch(g_guiSettings.GetInt("audiooutput.mode"))
     {
-      if (++mode == AUDIO_COUNT)
-        mode = 0;
-      g_guiSettings.SetInt("audiooutput.mode", mode);
-      if (g_guiSettings.GetInt("audiooutput.mode") == mode)
-         break;
+      case AUDIO_ANALOG: g_guiSettings.SetInt("audiooutput.mode", AUDIO_IEC958); break;
+      case AUDIO_IEC958: g_guiSettings.SetInt("audiooutput.mode", AUDIO_HDMI  ); break;
+      case AUDIO_HDMI  : g_guiSettings.SetInt("audiooutput.mode", AUDIO_ANALOG); break;
     }
 
     g_application.Restart();
@@ -2874,19 +2914,15 @@ bool CApplication::OnAction(const CAction &action)
       if (g_settings.m_bMute)
         UnMute();
       float volume = g_settings.m_fVolumeLevel;
-// Android has steps based on the max available volume level
-#if defined(TARGET_ANDROID)
-      float step = (VOLUME_MAXIMUM - VOLUME_MINIMUM) / CXBMCApp::GetMaxSystemVolume();
-#else
       float step   = (VOLUME_MAXIMUM - VOLUME_MINIMUM) / VOLUME_CONTROL_STEPS;
-
       if (action.GetRepeat())
         step *= action.GetRepeat() * 50; // 50 fps
-#endif
+
       if (action.GetID() == ACTION_VOLUME_UP)
         volume += (float)fabs(action.GetAmount()) * action.GetAmount() * step;
       else
         volume -= (float)fabs(action.GetAmount()) * action.GetAmount() * step;
+
       SetVolume(volume, false);
     }
     // show visual feedback of volume change...
@@ -4159,6 +4195,24 @@ bool CApplication::PlayFile(const CFileItem& item, bool bRestart)
       if( options.fullscreen && g_renderManager.IsStarted()
        && g_windowManager.GetActiveWindow() != WINDOW_FULLSCREEN_VIDEO )
        SwitchToFullScreen();
+
+      if (!item.IsDVDImage() && !item.IsDVDFile())
+      {
+        CVideoInfoTag *details = m_itemCurrentFile->GetVideoInfoTag();
+        // Save information about the stream if we currently have no data
+        if (!details->HasStreamDetails() ||
+             details->m_streamDetails.GetVideoDuration() <= 0)
+        {
+          if (m_pPlayer->GetStreamDetails(details->m_streamDetails) && details->HasStreamDetails())
+          {
+            CVideoDatabase dbs;
+            dbs.Open();
+            dbs.SetStreamDetailsForFileId(details->m_streamDetails, details->m_iFileId);
+            dbs.Close();
+            CUtil::DeleteVideoDatabaseDirectoryCache();
+          }
+        }
+      }
     }
 #endif
 
@@ -4448,18 +4502,13 @@ void CApplication::UpdateFileState()
         m_progressTrackingPlayCountUpdate = true;
       }
 
-      // Check whether we're *really* playing video else we may race when getting eg. stream details
-      if (IsPlayingVideo())
+      if (m_progressTrackingItem->IsVideo())
       {
-        // Special case for DVDs: Only extract streamdetails if title length > 15m. Should yield more correct info
-        if (!(m_progressTrackingItem->IsDVDImage() || m_progressTrackingItem->IsDVDFile()) || m_pPlayer->GetTotalTime() > 15*60*1000)
+        if ((m_progressTrackingItem->IsDVDImage() || m_progressTrackingItem->IsDVDFile()) && m_pPlayer->GetTotalTime() > 15*60*1000)
         {
-          CStreamDetails details;
-          // Update with stream details from player, if any
-          if (m_pPlayer->GetStreamDetails(details))
-            m_progressTrackingItem->GetVideoInfoTag()->m_streamDetails = details;
+          m_progressTrackingItem->GetVideoInfoTag()->m_streamDetails.Reset();
+          m_pPlayer->GetStreamDetails(m_progressTrackingItem->GetVideoInfoTag()->m_streamDetails);
         }
-
         // Update bookmark for save
         m_progressTrackingVideoResumeBookmark.player = CPlayerCoreFactory::GetPlayerName(m_eCurrentPlayer);
         m_progressTrackingVideoResumeBookmark.playerState = m_pPlayer->GetPlayerState();
@@ -4917,22 +4966,11 @@ bool CApplication::OnMessage(CGUIMessage& message)
       }
 #endif
 
-      // ok - send the file to the player, if it accepts it
-      if (m_pPlayer)
-      {
-        if (m_pPlayer->QueueNextFile(file))
-        {
-          // player accepted the next file
-          m_nextPlaylistItem = iNext;
-        }
-        else
-        {
-          /* Player didn't accept next file: *ALWAYS* advance playlist in this case so the player can
-             queue the next (if it wants to) and it doesn't keep looping on this song */
-          g_playlistPlayer.SetCurrentSong(iNext);
-        }
+      // ok - send the file to the player if it wants it
+      if (m_pPlayer && m_pPlayer->QueueNextFile(file))
+      { // player wants the next file
+        m_nextPlaylistItem = iNext;
       }
-
       return true;
     }
     break;
@@ -5197,8 +5235,6 @@ void CApplication::ProcessSlow()
 
   if (!IsPlayingVideo())
     g_largeTextureManager.CleanupUnusedImages();
-
-  g_TextureManager.FreeUnusedTextures();
 
 #ifdef HAS_DVD_DRIVE
   // checks whats in the DVD drive and tries to autostart the content (xbox games, dvd, cdda, avi files...)
