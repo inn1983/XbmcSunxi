@@ -368,13 +368,22 @@ void CLinuxRendererA10::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     // for sizing video playback on a layer other than the gles layer.
     if (m_RenderUpdateCallBackFn)
       (*m_RenderUpdateCallBackFn)(m_RenderUpdateCallBackCtx, m_sourceRect, m_destRect);
+	RESOLUTION res = GetResolution();
+	int iWidth = g_settings.m_ResInfo[res].iWidth;
+	int iHeight = g_settings.m_ResInfo[res].iHeight;
 
     g_graphicsContext.BeginPaint();
+
+	glScissor(m_destRect.x1,
+		iHeight - m_destRect.y2,
+		m_destRect.x2 - m_destRect.x1,
+		m_destRect.y2 - m_destRect.y1);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
+	glScissor(0, 0, iWidth, iHeight);
 
     g_graphicsContext.EndPaint();
     return;
@@ -1421,8 +1430,8 @@ static int             g_syslayer = 0x64;
 static int             g_hlayer = 0;
 static int             g_width;
 static int             g_height;
-CRect           g_srcRect;
-CRect           g_dstRect;
+static CRect           g_srcRect;
+static CRect           g_dstRect;
 static int             g_lastnr;
 static int             g_decnr;
 static int             g_wridx;
@@ -1430,7 +1439,44 @@ static int             g_rdidx;
 static A10VLQueueItem  g_dispq[DISPQS];
 pthread_mutex_t g_dispq_mutex;
 
-//static bool g_bParaSeted = false;
+
+static bool A10VLBlueScreenFix()
+{
+	int hlayer;
+	__disp_layer_info_t layera;
+	unsigned long args[4];
+
+	args[0] = g_screenid;
+	args[1] = DISP_LAYER_WORK_MODE_SCALER;
+	args[2] = 0;
+	args[3] = 0;
+	hlayer = ioctl(g_hdisp, DISP_CMD_LAYER_REQUEST, args);
+	if (hlayer <= 0)
+	{
+		CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_REQUEST failed.\n");
+		return false;
+	}
+	args[0] = g_screenid;
+	args[1] = hlayer;
+	args[2] = (unsigned long) &layera;
+	args[3] = 0;
+	ioctl(g_hdisp, DISP_CMD_LAYER_GET_PARA, args);
+	
+	layera.mode = DISP_LAYER_WORK_MODE_SCALER;
+	layera.fb.mode = DISP_MOD_MB_UV_COMBINED;
+	layera.fb.format = DISP_FORMAT_YUV420;
+	layera.fb.seq = DISP_SEQ_UVUV;
+	ioctl(g_hdisp, DISP_CMD_LAYER_SET_PARA, args);
+
+	args[0] = g_screenid;
+	args[1] = hlayer;
+	args[2] = 0;
+	args[3] = 0;
+	ioctl(g_hdisp, DISP_CMD_LAYER_RELEASE, args);
+	
+	return true;
+}
+
 
 
 bool A10VLInit(int &width, int &height, double &refreshRate)
@@ -1531,6 +1577,7 @@ bool A10VLInit(int &width, int &height, double &refreshRate)
     args[3] = 0;
     ioctl(g_hdisp, DISP_CMD_LAYER_RELEASE, args);
   }
+  
 
   args[0] = g_screenid;
   args[1] = DISP_LAYER_WORK_MODE_SCALER;
@@ -1857,65 +1904,18 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
       CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_CK_OFF failed.\n");
 
 
+	
 //2013.3.24 added by inn start
 /* 
 fix blueishness by setting hue and saturation
 of the GL Layer
 http://forum.xbmc.org/showthread.php?tid=126995&page=146 
+2014.6.17 merge the codes of rellla, remove the code 2013.3.24 added by inn.
 */
-    #define NEUTRAL_HUE 20
-	#define NEUTRAL_SATURATION 32
+	//Hack: avoid blue picture background
+	if (!A10VLBlueScreenFix())
+		return false;
 
-	args[0] = g_screenid;
-	args[1] = g_hlayer;
-	args[2] = 0;
-	args[3] = 0;
-	int hue=0;
-	hue = ioctl(g_hdisp, DISP_CMD_LAYER_GET_HUE, args);
-	// CLog::Log(LOGDEBUG, "A10: layer hue is %d.\n", hue );
-
-	// setting hue and saturation for this layer
-	// to prevent blue tainted screen
-	if ( hue != NEUTRAL_HUE )
-	{
-		args[0] = g_screenid;
-		args[1] = g_hlayer;
-		args[2] = NEUTRAL_HUE;
-		args[3] = 0;
-		if ( ioctl(g_hdisp, DISP_CMD_LAYER_SET_HUE, args) < 0 )
-		{
-			CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_SET_HUE failed.\n");
-		}
-		else
-		{
-			CLog::Log(LOGDEBUG, "A10: set hue to : %d\n", NEUTRAL_HUE);
-		}
-	}
-
-	args[0] = g_screenid;
-	args[1] = g_hlayer;
-	args[2] = 0;
-	args[3] = 0;
-	int sat = 0;
-	sat = ioctl(g_hdisp, DISP_CMD_LAYER_GET_SATURATION, args);
-	// CLog::Log(LOGDEBUG, "A10: layer saturation is %d.\n", sat );
-
-	if ( sat != NEUTRAL_SATURATION )
-	{
-		args[0] = g_screenid;
-		args[1] = g_hlayer;
-		args[2] = NEUTRAL_SATURATION;
-		args[3] = 0;
-		if ( ioctl(g_hdisp, DISP_CMD_LAYER_SET_SATURATION, args) < 0 )
-		{
-			CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_SET_SATURATION failed.\n");
-		}
-		else
-		{
-			CLog::Log(LOGDEBUG, "A10: set saturation to : %d\n", NEUTRAL_SATURATION);
-		}
-	}
-//2013.3.24 added by inn end 
 
     if ((g_height > 720) && (getenv("A10AB") == NULL))
     {
