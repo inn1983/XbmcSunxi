@@ -39,6 +39,8 @@ public:
   virtual void DestroyTextureObject();
   void LoadToGPU();
   void BindToUnit(unsigned int unit);
+  uint32_t GetPixelYphys(){}
+  uint32_t GetPixelUVphys(){}
 
 private:
   GLuint m_texture;

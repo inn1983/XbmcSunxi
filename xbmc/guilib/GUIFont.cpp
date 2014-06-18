@@ -307,3 +307,37 @@ void CGUIFont::SetFont(CGUIFontTTFBase *font)
   if (m_font)
     m_font->AddReference();
 }
+
+/*added by inn*/
+bool CGUIFont::GetHasRenderF()
+{
+	return m_font->m_ChHasRended;
+
+}
+
+/*added by inn*/
+void CGUIFont::SetScrollAmount(float scrollAmount)
+{
+  if (m_font->m_tran <= -1000) {
+	m_font->m_tran = 0;
+  }
+   m_font->m_tran -= scrollAmount;
+}
+
+/*added by inn*/
+void CGUIFont::TelopBegin()
+{
+	if (!m_font) return;
+  		m_font->TelopBegin();
+
+}
+
+/*added by inn*/
+void CGUIFont::TelopEnd()	
+{
+	if (!m_font) return;
+  		m_font->TelopEnd();
+}
+
+
+

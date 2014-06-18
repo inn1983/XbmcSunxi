@@ -41,11 +41,11 @@ $(TARGET) : .extracted $(OBJS)
 	
 .extracted: $(TARBALLS)/$(TARBALL)
 	rm -rf tmp	
-	mkdir tmp
+	mkdir -p tmp
 	( cd tmp &&\
 	  tar xvfz $(TARBALLS)/$(TARBALL) &&\
-	  cd linux-sunxi-*/libcedarv/$(LIBVERSION) &&\
-	  rm Makefile .gitignore cedardefs.mk &&\
+	  cd *cedarx-libs*/libcedarv/$(LIBVERSION) &&\
+	  rm -f Makefile .gitignore cedardefs.mk &&\
 	  rm -rf sample &&\
 	  mv * ../../../../ \
 	)

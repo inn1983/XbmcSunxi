@@ -62,6 +62,8 @@
 #include "settings/Settings.h"
 #include "utils/StringUtils.h"
 #include "GUIAction.h"
+#include "Telop.h"	//added by inn
+
 
 using namespace std;
 using namespace EPG;
@@ -108,7 +110,8 @@ static const ControlMapping controls[] =
     {"wraplist",          CGUIControl::GUICONTAINER_WRAPLIST},
     {"fixedlist",         CGUIControl::GUICONTAINER_FIXEDLIST},
     {"epggrid",           CGUIControl::GUICONTAINER_EPGGRID},
-    {"panel",             CGUIControl::GUICONTAINER_PANEL}};
+    {"panel",             CGUIControl::GUICONTAINER_PANEL},
+	{"telop",			  CGUIControl::GUICONTROL_TELOP}};	//added by inn
 
 CGUIControl::GUICONTROLTYPES CGUIControlFactory::TranslateControlType(const CStdString &type)
 {
@@ -1322,6 +1325,16 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
   else if (type == CGUIControl::GUICONTROL_VISUALISATION)
   {
     control = new CGUIVisualisationControl(parentID, id, posX, posY, width, height);
+  }
+  else if (type == CGUIControl::GUICONTROL_TELOP)
+  {
+  	const CGUIInfoLabel &content = (infoLabels.size()) ? infoLabels[0] : CGUIInfoLabel("");
+	control = new CGUITelopControl(
+        parentID, id, posX, posY, width, height,
+        labelInfo, wrapMultiLine, bHasPath);
+    ((CGUITelopControl *)control)->SetInfo(content);
+    ((CGUITelopControl *)control)->SetWidthControl(minWidth, bScrollLabel);
+
   }
 
   // things that apply to all controls

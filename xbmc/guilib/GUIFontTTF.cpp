@@ -157,6 +157,8 @@ CGUIFontTTFBase::CGUIFontTTFBase(const CStdString& strFileName)
   m_color = 0;
   m_vertex_count = 0;
   m_nTexture = 0;
+  m_ChHasRended = false;	//added by inn
+  m_tran = 0.0;
 }
 
 CGUIFontTTFBase::~CGUIFontTTFBase(void)
@@ -311,7 +313,10 @@ bool CGUIFontTTFBase::Load(const CStdString& strFilename, float height, float as
 void CGUIFontTTFBase::DrawTextInternal(float x, float y, const vecColors &colors, const vecText &text, uint32_t alignment, float maxPixelWidth, bool scrolling)
 {
   Begin();
-
+  /*if (m_ChHasRended){	//added by inn
+	End();
+	return;
+  }*/
   // save the origin, which is scaled separately
   m_originX = x;
   m_originY = y;
@@ -412,7 +417,8 @@ void CGUIFontTTFBase::DrawTextInternal(float x, float y, const vecColors &colors
     else
       cursorX += ch->advance;
   }
-
+  //m_ChHasRended = true;	//added by inn
+  
   End();
 }
 

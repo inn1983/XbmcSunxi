@@ -90,6 +90,11 @@
 #include <vector>
 #include "xbmc/settings/AdvancedSettings.h"
 
+#include "cores/VideoRenderers/RenderManager.h"
+#include "cores/VideoRenderers/LinuxRendererA10.h"
+
+#include "GUIInfoManager.h"
+
 using namespace std;
 using namespace XFILE;
 using namespace ADDON;
@@ -216,6 +221,8 @@ const BUILT_IN commands[] = {
   { "ToggleDebug",                false,  "Enables/disables debug mode" },
   { "StartPVRManager",            false,  "(Re)Starts the PVR manager" },
   { "StopPVRManager",             false,  "Stops the PVR manager" },
+  { "SetSizeManual",		  	  true,	  "Set the size of SlideShow and Video"},
+  {	"UpdateTwitter",		  	  true,	  "UpdateTwitter"},
 };
 
 bool CBuiltins::HasCommand(const CStdString& execString)
@@ -1636,6 +1643,32 @@ int CBuiltins::Execute(const CStdString& execString)
   else if (execute.Equals("stoppvrmanager"))
   {
     g_application.StopPVRManager();
+  }
+  else if (execute.Equals("setsizemanual"))
+  {
+    if (!params.size())
+    {
+      CLog::Log(LOGERROR, "SetSizeManual called with empty parameter");
+      return -2;
+    }
+
+    CGUIMessage msg(GUI_MSG_SETTING_SLIDSHOWSIZE, 0, 0, 0);
+    msg.SetStringParam(params[0]);
+    CGUIWindow *pWindow = g_windowManager.GetWindow(WINDOW_SLIDESHOW);
+    if (pWindow) pWindow->OnMessage(msg);
+	
+	g_renderManager.SetSizeManual(params[0]);	//set video size.
+
+  }
+  else if (execute.Equals("updatetwitter"))
+  {
+  	if (!params.size())
+    {
+      CLog::Log(LOGERROR, "UpdateTwitter called with empty parameter");
+      return -2;
+    }
+
+	g_infoManager.SetTwitterInfo(params[0]);
   }
   else
     return -1;

@@ -90,6 +90,13 @@ bool CGUIWindow::Load(const CStdString& strFileName, bool bContainsPath)
   start = CurrentHostCounter();
 #endif
   const char* strLoadType;
+  CStdString strxml = strFileName.Right(19);
+  /*
+  if (strxml.Left(6).CompareNoCase("custom") == 0)
+  {
+  	m_loadType = KEEP_IN_MEMORY;	//let the Custom_OverlayX.xml keep.
+  }
+  */
   switch (m_loadType)
   {
   case LOAD_ON_GUI_INIT:

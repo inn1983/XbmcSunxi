@@ -29,6 +29,16 @@
 #include "DllImageLib.h"
 #include "utils/SortUtils.h"
 
+/*
+extern "C" {
+#include <libcedarv.h>
+#include <drv_display_sun4i.h>
+#ifndef CEDARV_FRAME_HAS_PHY_ADDR
+#include <os_adapter.h>
+#endif
+}
+*/
+
 class CFileItemList;
 class CVariant;
 
@@ -43,6 +53,8 @@ public:
   void Create(CGUIWindowSlideShow *pCallback);
   void LoadPic(int iPic, int iSlideNumber, const CStdString &strFileName, const int maxWidth, const int maxHeight);
   bool IsLoading() { return m_isLoading;};
+  /*by inn. Cache all of the jpeg in the dir.*/
+  int CacheAllPic(CFileItemList* slides, int maxWidth, int maxHeight);
 
 private:
   void Process();
@@ -56,6 +68,8 @@ private:
   bool m_isLoading;
 
   CGUIWindowSlideShow *m_pCallback;
+
+  std::map<CStdString, CBaseTexture*> m_pTextureMap;	//by inn. The data of decoded from jpeg file.
 };
 
 class CGUIWindowSlideShow : public CGUIWindow
@@ -95,6 +109,7 @@ public:
   bool IsPaused() const { return m_bPause; }
   bool IsShuffled() const { return m_bShuffled; }
   int GetDirection() const { return m_iDirection; }
+  int IsAllLoaded(){return m_bAllPicLoaded;}	//added by inn
 private:
   typedef std::set<CStdString> path_set;  // set to track which paths we're adding
   void AddItems(const CStdString &strPath, path_set *recursivePaths,
@@ -147,4 +162,8 @@ private:
   CCriticalSection m_slideSection;
   CStdString m_strExtensions;
   CPoint m_firstGesturePoint;
+  int m_bAllPicLoaded;	//added by inn. all of jpegs are decoded.
+  int m_zoomHight;
+  int m_zoomWidth;
+  //cedarv_decoder_t* m_hcedarv;	//for A10 DISP
 };

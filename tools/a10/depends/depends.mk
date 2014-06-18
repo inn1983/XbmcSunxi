@@ -8,11 +8,15 @@
 #
 
 #your home dir
-HOME=$(shell echo ~)
+#HOME=$(shell echo ~)
+HOME=/opt/a10hacking
 #where your tarballs go
-TARBALLS=$(HOME)/tarballs
+TARBALLS=$(HOME)/xbmctmp/tarballs
 #whether to compile for armhf
 USEARMHF=1
+
+#wget-command to download files
+WGET=wget --no-check-certificate
 
 #
 # armhf notes:
@@ -38,6 +42,7 @@ XBMCPREFIX=/allwinner/xbmc-pvr-bin$(HF)
 #where is your toolchain
 TOOLCHAIN=/usr
 
+JOBS=1
 export HOST=arm-linux-gnueabi$(HF)
 export BUILD=arm-linux-gnueabi$(HF)
 export CROSS_COMPILE=
@@ -48,12 +53,13 @@ else
 #
 
 #where is your arm rootfs
-SDKSTAGE=/home/stefan/allwinner/rootfs$(HF)
+SDKSTAGE=$(HOME)/rootfs/debrootfs
 #where is your xbmc install root 
 XBMCPREFIX=/allwinner/xbmc-pvr-bin$(HF)
 #where is your toolchain
 TOOLCHAIN=/usr/arm-linux-gnueabi$(HF)
 
+JOBS=4
 export HOST=arm-linux-gnueabi$(HF)
 export BUILD=i686-linux
 export CROSS_COMPILE=${HOST}-
@@ -95,8 +101,12 @@ ${RLINK_PATH} \
 -L${SDKSTAGE}/lib/arm-linux-gnueabi$(HF) \
 -L${SDKSTAGE}/usr/lib \
 -L${SDKSTAGE}/usr/lib/arm-linux-gnueabi$(HF)
- 
-export CFLAGS=-pipe -O3 -mtune=cortex-a8 -D__ARM_NEON__ -DALLWINNERA10
+
+ifeq ($(USEARMHF), 1)
+export CFLAGS=-pipe -O3 -mfloat-abi=hard -mtune=cortex-a8 -mcpu=cortex-a8 -D__ARM_NEON__ -DALLWINNERA10
+else
+export CFLAGS=-pipe -O3 -mfloat-abi=softfp -mtune=cortex-a8 -mcpu=cortex-a8 -D__ARM_NEON__ -DALLWINNERA10
+endif
 export CFLAGS+=$(CEDARINCLUDES) $(GLESINCLUDES)
 export CFLAGS+=\
 -isystem${XBMCPREFIX}/include \
@@ -115,6 +125,7 @@ export CXXCPP=${CXX} -E
 export RANLIB=${CROSS_COMPILE}ranlib
 export STRIP=${CROSS_COMPILE}strip
 export OBJDUMP=${CROSS_COMPILE}objdump
+export PKG_CONFIG_SYSROOT_DIR=${SDKSTAGE}
 export PKG_CONFIG_LIBDIR=${PREFIX}/lib/pkgconfig:${SDKSTAGE}/lib/pkgconfig:${SDKSTAGE}/usr/lib/pkgconfig:${SDKSTAGE}/usr/lib/arm-linux-gnueabi$(HF)/pkgconfig:${SDKSTAGE}/usr/share/pkgconfig:${SDKSTAGE}/usr/local/lib/pkgconfig
 export PKG_CONFIG_PATH=${PREFIX}/bin/pkg-config
 export PYTHON_VERSION=2.7

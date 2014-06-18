@@ -92,7 +92,7 @@ public:
   float initialPos;
   CStdStringW suffix;
 
-  static const int defaultSpeed = 60;
+  static const int defaultSpeed = 33;
 private:
   float m_averageFrameTime;
   uint32_t m_lastFrameTime;
@@ -136,6 +136,8 @@ public:
 
   void Begin();
   void End();
+  void TelopBegin();	//added by inn
+  void TelopEnd();	//added by inn
 
   uint32_t GetStyle() const { return m_style; };
 
@@ -147,6 +149,10 @@ public:
   }
 
   void SetFont(CGUIFontTTFBase* font);
+
+  /*added by inn*/
+  bool GetHasRenderF();
+  void SetScrollAmount(float scrollAmount);
 
 protected:
   CStdString m_strFontName;

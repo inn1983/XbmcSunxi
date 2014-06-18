@@ -124,6 +124,7 @@ protected:
   CStdStringW m_lastText;
   float m_textWidth;
   float m_textHeight;
+  bool m_bTelop;	//added by inn
 private:
   inline bool IsSpace(character_t letter) const XBMC_FORCE_INLINE
   {

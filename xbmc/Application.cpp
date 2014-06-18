@@ -434,8 +434,10 @@ CApplication::CApplication(void)
   m_progressTrackingPlayCountUpdate = false;
   m_currentStackPosition = 0;
   m_lastFrameTime = 0;
+  m_lastFrameTime_64 = 0;	//added by inn
   m_lastRenderTime = 0;
   m_bTestMode = false;
+  m_debugFpsCnt = 0; //added by inn
 }
 
 CApplication::~CApplication(void)
@@ -2285,7 +2287,7 @@ void CApplication::Render()
       CSingleLock lock(m_frameMutex);
 
       TightConditionVariable<int&> cv(m_frameCond,m_frameCount);
-      cv.wait(lock,100);
+      cv.wait(lock,5);
 
       m_bPresentFrame = m_frameCount > 0;
       decrement = m_bPresentFrame;
@@ -2363,16 +2365,55 @@ void CApplication::Render()
   else
     flip = true;
 
+/*
+  if (g_infoManager.m_debugFpsFlg){	//added by inn
+  	CLog::Log(LOGDEBUG, "line %d:limitFrames is %d", __LINE__, limitFrames);	//added by inn
+  	CLog::Log(LOGDEBUG, "line %d:singleFrameTime is %d", __LINE__, singleFrameTime);	//added by inn
+  }
+*/
+
+#if 0
   //fps limiter, make sure each frame lasts at least singleFrameTime milliseconds
   if (limitFrames || !flip)
   {
-    if (!limitFrames)
+	if (!limitFrames)		//modified by inn
       singleFrameTime = 40; //if not flipping, loop at 25 fps
 
     unsigned int frameTime = now - m_lastFrameTime;
+	if (g_infoManager.m_debugFpsFlg){
+		CLog::Log(LOGDEBUG, "line %d:frameTime is %d,singleFrameTime is %d", __LINE__, frameTime, singleFrameTime);	//added by inn
+	}	//added by inn
+	
     if (frameTime < singleFrameTime)
       Sleep(singleFrameTime - frameTime);
   }
+
+#else
+  /*The swap rate can be fixed to g_advancedSettings.m_ForcedSwapTime without eglSwapInterval. added by inn*/
+  if (g_advancedSettings.m_ForcedSwapTime != 0.0){
+
+		unsigned int curr, frameTime;
+  		curr = SystemClockMillis();
+		unsigned int swapTime = g_advancedSettings.m_ForcedSwapTime;
+  		if(m_lastFrameTime== 0)
+			m_lastFrameTime = curr;
+
+  		/* calculate our next swap timestamp */
+  		frameTime = curr - m_lastFrameTime;
+
+  		if (frameTime < swapTime)
+			Sleep((DWORD)(swapTime - frameTime));
+		//else 
+			//flip = false;
+  }
+
+#endif
+  now = XbmcThreads::SystemClockMillis();	//added by inn
+  unsigned int frameTime_m = now - m_lastFrameTime;	//added by inn
+
+  if (g_infoManager.m_debugFpsFlg)
+  	CLog::Log(LOGDEBUG, "line %d: frameTime_m is %d", __LINE__, frameTime_m);	//added by inn
+
   m_lastFrameTime = XbmcThreads::SystemClockMillis();
 
   if (flip)
@@ -2390,6 +2431,11 @@ void CApplication::Render()
       m_frameCount--;
   }
   m_frameCond.notifyAll();
+
+  if (g_infoManager.m_debugFpsFlg){	//added by inn
+  	m_debugFpsCnt = 0;
+	g_infoManager.m_debugFpsFlg = 0;
+  }
 }
 
 void CApplication::SetStandAlone(bool value)

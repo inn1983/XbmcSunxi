@@ -25,7 +25,7 @@
 
 #if defined(ALLWINNERA10) && !defined(TARGET_ANDROID)
 #include "cores/VideoRenderers/LinuxRendererA10.h"
-static fbdev_window g_fbwin;
+static struct mali_native_window g_fbwin;
 static double       g_refreshRate;
 #endif
 

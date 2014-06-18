@@ -54,6 +54,19 @@ CMatrixGLES::~CMatrixGLES()
 {
 }
 
+/*SetMatrix added by inn*/
+void CMatrixGLES::SetMatrix(EMATRIXMODE mode, float* matrix)
+{
+  if (MODE_WITHIN_RANGE(mode))
+  {
+  	//m_matrices[mode].back() = MatrixWrapper(matrix);
+  	memcpy(m_pMatrix, matrix, sizeof(float)*16);
+  	
+  }
+  return;
+}
+
+
 GLfloat* CMatrixGLES::GetMatrix(EMATRIXMODE mode)
 {
   if (MODE_WITHIN_RANGE(mode))

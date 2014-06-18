@@ -21,7 +21,7 @@ all: .installed
 		--host=$(HOST) \
 		--build=$(BUILD) \
 		--prefix=$(SDKSTAGE)/usr \
-		--libdir=$(SDKSTAGE)/usr/lib/arm-linux-gnueabi \
+		--libdir=$(SDKSTAGE)/usr/lib/arm-linux-gnueabi$(HF) \
 	)
 	touch $@
 
@@ -30,10 +30,7 @@ all: .installed
 	touch .extracted
 
 $(TARBALLS)/$(TARBALL):
-	wget $(LOCATION)/$(TARBALL) -O $(TARBALLS)/$(TARBALL)
+	$(WGET) $(LOCATION)/$(TARBALL) -O $(TARBALLS)/$(TARBALL)
 	
 clean:
 	rm -rf .installed .builded .configured .extracted libmad*
-	
-	
-	

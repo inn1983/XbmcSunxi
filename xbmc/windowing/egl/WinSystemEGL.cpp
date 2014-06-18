@@ -387,6 +387,7 @@ void CWinSystemEGL::SetVSyncImpl(bool enable)
   m_iVSyncMode = enable;
   if (!m_egl->SetVSync(m_display, m_iVSyncMode))
     CLog::Log(LOGERROR, "%s,Could not set egl vsync", __FUNCTION__);
+  CLog::Log(LOGDEBUG, "line %d:m_iVSyncMode is %d", __LINE__, m_iVSyncMode);	//added by inn
 }
 
 void CWinSystemEGL::ShowOSMouse(bool show)

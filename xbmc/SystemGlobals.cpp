@@ -55,6 +55,7 @@
 #include "linux/RBP.h"
 #endif
 
+
   CSettings          g_settings;
 
   CXBMCRenderManager g_renderManager;

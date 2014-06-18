@@ -301,5 +301,20 @@ void A10VLFreeQueue();
 void A10VLDisplayQueueItem(A10VLQueueItem *pItem, CRect &srcRect, CRect &dstRect);
 
 int  A10VLDisplayPicture(cedarv_picture_t &pict, int refnr, CRect &srcRect, CRect &dstRect);
+int A10VLDisplaySildeShow(cedarv_picture_t &pict, int refnr, CRect &srcRect, CRect &dstRect);
+int A10GetDispHandle();
+int A10GetLayer();
+
+int A10disp_set_para(const uint32_t luma_buffer, const uint32_t chroma_buffer,
+			const int color_format, const int width, const int height,
+			const int out_x, const int out_y, const int out_width, const int out_height, const uint16_t alpha, uint32_t UpdateCmd);
+
+extern CRect  g_srcRect;
+extern CRect g_dstRect;
+extern pthread_mutex_t g_dispq_mutex;
+
+#define DRAM_OFFSET (0x40000000)
+#define COLOR_YUV420 (0)
+#define COLOR_YUV422 (2)
 
 #endif
