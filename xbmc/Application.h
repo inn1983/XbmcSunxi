@@ -107,6 +107,7 @@ protected:
 class CApplication : public CXBApplicationEx, public IPlayerCallback, public IMsgTargetCallback
 {
 public:
+	int m_debugFpsCnt;	//added by inn
 
   enum ESERVERS
   {
@@ -416,7 +417,9 @@ protected:
 
   bool m_bPresentFrame;
   unsigned int m_lastFrameTime;
+  int64_t m_lastFrameTime_64;	//added by inn
   unsigned int m_lastRenderTime;
+  //unsigned int m_flipCnt;	//added by inn
 
   bool m_bStandalone;
   bool m_bEnableLegacyRes;

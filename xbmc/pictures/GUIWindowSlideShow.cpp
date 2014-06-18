@@ -45,6 +45,11 @@
 #include "interfaces/AnnouncementManager.h"
 #include "pictures/PictureInfoTag.h"
 
+#ifdef ALLWINNERA10
+#include "cores/VideoRenderers/LinuxRendererA10.h"
+#include "guilib/TextureA10.h"
+#endif
+
 using namespace XFILE;
 
 #define MAX_ZOOM_FACTOR                     10
@@ -79,6 +84,12 @@ CBackgroundPicLoader::CBackgroundPicLoader() : CThread("CBackgroundPicLoader")
 CBackgroundPicLoader::~CBackgroundPicLoader()
 {
   StopThread();
+  std::map<CStdString, CBaseTexture*>::iterator it = m_pTextureMap.begin();
+  while( it != m_pTextureMap.end() )	//added by inn. 
+  {
+  	delete (it->second);
+	++it;
+  }
 }
 
 void CBackgroundPicLoader::Create(CGUIWindowSlideShow *pCallback)
@@ -99,7 +110,19 @@ void CBackgroundPicLoader::Process()
       if (m_pCallback)
       {
         unsigned int start = XbmcThreads::SystemClockMillis();
-        CBaseTexture* texture = CTexture::LoadFromFile(m_strFileName, m_maxWidth, m_maxHeight, g_guiSettings.GetBool("pictures.useexifrotation"));
+		/*modfied by inn. 
+		All of Pic has been loaded on this time */
+		CBaseTexture* texture;
+		texture = NULL;
+		/*if(m_pCallback->IsAllLoaded()){
+			texture = m_pTextureMap[m_strFileName];
+		}*/
+
+		//if(texture == NULL) 
+		//{
+		texture = CA10Texture::LoadFromFile(m_strFileName, m_maxWidth, m_maxHeight, g_guiSettings.GetBool("pictures.useexifrotation"), true);
+			//m_pTextureMap.insert(std::map<CStdString, CBaseTexture*>::value_type(m_strFileName, texture));
+		//}
         totalTime += XbmcThreads::SystemClockMillis() - start;
         count++;
         // tell our parent
@@ -147,12 +170,22 @@ CGUIWindowSlideShow::CGUIWindowSlideShow(void)
   m_Resolution = RES_INVALID;
   m_loadType = KEEP_IN_MEMORY;
   Reset();
+  m_bAllPicLoaded = 0;
+  m_zoomHight = 1080;
+  m_zoomWidth = 1920;
+  int ret;
+  //m_hcedarv = libcedarv_init(&ret);
+  if (ret < 0)
+  {
+    CLog::Log(LOGERROR, "A10: libcedarv_init failed. (%d)\n", ret);
+  }
 }
 
 CGUIWindowSlideShow::~CGUIWindowSlideShow(void)
 {
   Reset();
   delete m_slides;
+  //libcedarv_exit(m_hcedarv);
 }
 
 void CGUIWindowSlideShow::AnnouncePlayerPlay(const CFileItemPtr& item)
@@ -245,6 +278,12 @@ void CGUIWindowSlideShow::Reset()
   m_slides->Clear();
   AnnouncePlaylistClear();
   m_Resolution = g_graphicsContext.GetVideoResolution();
+#ifdef ALLWINNERA10
+  //init A10 cedar_dev 
+  if (!ve_open()){
+	CLog::Log(LOGERROR, "TextureA10: Can't open VE");
+	}
+#endif
 }
 
 void CGUIWindowSlideShow::OnDeinitWindow(int nextWindowID)
@@ -277,6 +316,10 @@ void CGUIWindowSlideShow::OnDeinitWindow(int nextWindowID)
   // and close the images.
   m_Image[0].Close();
   m_Image[1].Close();
+  #ifdef ALLWINNERA10
+  A10VLHide();	//I will move it to other class!!
+  ve_close();
+  #endif
   g_infoManager.ResetCurrentSlide();
 
   CGUIWindow::OnDeinitWindow(nextWindowID);
@@ -464,17 +507,39 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
     GetCheckedSize((float)g_settings.m_ResInfo[m_Resolution].iWidth * m_fZoom,
                    (float)g_settings.m_ResInfo[m_Resolution].iHeight * m_fZoom,
                     maxWidth, maxHeight);
+/*
+	if (m_bAllPicLoaded == 0) { //by inn.
+		m_pBackgroundLoader->CacheAllPic(m_slides, maxWidth, maxHeight);	//by inn. Cache all of the jpeg in the dir.
+		m_bAllPicLoaded = 1;
+	}
+*/
     if (!m_slides->Get(m_iCurrentSlide)->IsVideo()) 
       m_pBackgroundLoader->LoadPic(m_iCurrentPic, m_iCurrentSlide, m_slides->Get(m_iCurrentSlide)->GetPath(), maxWidth, maxHeight);
   }
 
   // check if we should discard an already loaded next slide
   if (m_bLoadNextPic && m_Image[1 - m_iCurrentPic].IsLoaded() && m_Image[1 - m_iCurrentPic].SlideNumber() != m_iNextSlide)
-    m_Image[1 - m_iCurrentPic].Close();
+  {
+  	//if(m_bAllPicLoaded){	
+		//m_Image[1 - m_iCurrentPic].CloseNoDel();	//added by inn
+	//}
+  	//else{
+		m_Image[1 - m_iCurrentPic].Close();
+	//}
+
+  }
 
   // if we're reloading an image (for better res on zooming we need to close any open ones as well)
   if (m_bReloadImage && m_Image[1 - m_iCurrentPic].IsLoaded() && m_Image[1 - m_iCurrentPic].SlideNumber() != m_iCurrentSlide)
-    m_Image[1 - m_iCurrentPic].Close();
+  {
+  	//if(m_bAllPicLoaded){	
+		//m_Image[1 - m_iCurrentPic].CloseNoDel();	//added by inn
+	//}
+  	//else{
+		m_Image[1 - m_iCurrentPic].Close();
+	//}
+
+  }
 
   if (m_bReloadImage)
   {
@@ -507,6 +572,7 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
       GetCheckedSize((float)g_settings.m_ResInfo[m_Resolution].iWidth * m_fZoom,
                      (float)g_settings.m_ResInfo[m_Resolution].iHeight * m_fZoom,
                      maxWidth, maxHeight);
+
       if (!m_slides->Get(m_iNextSlide)->IsVideo())
         m_pBackgroundLoader->LoadPic(1 - m_iCurrentPic, m_iNextSlide, m_slides->Get(m_iNextSlide)->GetPath(), maxWidth, maxHeight);
     }
@@ -587,10 +653,10 @@ void CGUIWindowSlideShow::Process(unsigned int currentTime, CDirtyRegionList &re
 void CGUIWindowSlideShow::Render()
 {
   if (m_Image[m_iCurrentPic].IsLoaded())
-    m_Image[m_iCurrentPic].Render();
+    m_Image[m_iCurrentPic].RenderA10();
 
   if (m_Image[m_iCurrentPic].DrawNextImage() && m_Image[1 - m_iCurrentPic].IsLoaded())
-    m_Image[1 - m_iCurrentPic].Render();
+    m_Image[1 - m_iCurrentPic].RenderA10();
 
   RenderErrorMessage();
   CGUIWindow::Render();
@@ -788,7 +854,7 @@ bool CGUIWindowSlideShow::OnAction(const CAction &action)
   case ACTION_ANALOG_MOVE:
     Move(action.GetAmount()*PICTURE_MOVE_AMOUNT_ANALOG, -action.GetAmount(1)*PICTURE_MOVE_AMOUNT_ANALOG);
     break;
-
+	
   default:
     return CGUIWindow::OnAction(action);
   }
@@ -884,6 +950,27 @@ bool CGUIWindowSlideShow::OnMessage(CGUIMessage& message)
         }
       }
       break;
+	case GUI_MSG_SETTING_SLIDSHOWSIZE:
+	  {
+	  	CStdString setsize = message.GetStringParam();
+		if (setsize.Equals("size0"))
+		{
+			m_zoomHight = 1080;
+			m_zoomWidth = 1920;
+		}
+		else if (setsize.Equals("size1"))
+		{
+			m_zoomHight = 844;
+			m_zoomWidth = 1500;
+		}
+		else if (setsize.Equals("size2"))
+		{
+			m_zoomHight = 720;
+			m_zoomWidth = 1280;
+		}
+
+	  }
+	 break;
   }
   return CGUIWindow::OnMessage(message);
 }
@@ -1002,7 +1089,9 @@ void CGUIWindowSlideShow::OnLoadPic(int iPic, int iSlideNumber, CBaseTexture* pT
     else
     {
       if (m_bSlideShow)
-        m_Image[iPic].SetTexture(iSlideNumber, pTexture, g_guiSettings.GetBool("slideshow.displayeffects") ? CSlideShowPic::EFFECT_RANDOM : CSlideShowPic::EFFECT_NONE);
+	  	//modfied by inn.  Set the TRANSISTION_EFFECT.
+        m_Image[iPic].SetTexture(iSlideNumber, pTexture, g_guiSettings.GetBool("slideshow.displayeffects") ? CSlideShowPic::EFFECT_RANDOM : CSlideShowPic::EFFECT_NONE, 
+        						CSlideShowPic::FADEIN_FADEOUT, m_zoomWidth, m_zoomHight);
       else
         m_Image[iPic].SetTexture(iSlideNumber, pTexture, CSlideShowPic::EFFECT_NO_TIMEOUT);
       m_Image[iPic].SetOriginalSize(pTexture->GetOriginalWidth(), pTexture->GetOriginalHeight(), bFullSize);
@@ -1112,16 +1201,19 @@ void CGUIWindowSlideShow::AddItems(const CStdString &strPath, path_set *recursiv
   items.Sort(method, order);
 
   // need to go into all subdirs
+  int picCnt = 0;	//by inn
   for (int i = 0; i < items.Size(); i++)
   {
     CFileItemPtr item = items[i];
+	if (picCnt >= 30) break;	//by inn
     if (item->m_bIsFolder && recursivePaths)
     {
-      AddItems(item->GetPath(), recursivePaths);
+      //AddItems(item->GetPath(), recursivePaths);	//removed by inn
     }
     else if (!item->m_bIsFolder && !URIUtils::IsRAR(item->GetPath()) && !URIUtils::IsZIP(item->GetPath()))
     { // add to the slideshow
       Add(item.get());
+	  picCnt++;		//by inn
     }
   }
 }
@@ -1147,4 +1239,17 @@ void CGUIWindowSlideShow::GetCheckedSize(float width, float height, int &maxWidt
 #endif
 }
 
+/*by inn. Cache all of the jpeg in the dir.*/
+/*
+int CBackgroundPicLoader::CacheAllPic(CFileItemList* slides, int maxWidth, int maxHeight)
+{
+	int i;
+	for (i=0; i<slides->Size(); i++){
+		CStdString strFileName = slides->Get(i)->GetPath();
+		CBaseTexture* texture = CTexture::LoadFromFile(strFileName, maxWidth, maxHeight, g_guiSettings.GetBool("pictures.useexifrotation"), true);
+		m_pTextureMap.insert(std::map<CStdString, CBaseTexture*>::value_type(strFileName, texture));
+	}
 
+	return 1;
+}
+*/

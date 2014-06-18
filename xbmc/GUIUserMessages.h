@@ -129,3 +129,7 @@
 
 // Sent to the AddonSetting dialogs from addons if they updated a setting
 #define GUI_MSG_SETTING_UPDATED       GUI_MSG_USER + 35
+
+// Sent to the CGUIWindowSlideShow to set the size of imge
+#define GUI_MSG_SETTING_SLIDSHOWSIZE       GUI_MSG_USER + 36
+

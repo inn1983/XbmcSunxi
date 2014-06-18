@@ -79,8 +79,13 @@ public:
 
   virtual void Begin() = 0;
   virtual void End() = 0;
+  virtual void TelopBegin() = 0;	//added by inn
+  
+  virtual void TelopEnd()= 0;	//added by inn
 
   const CStdString& GetFileName() const { return m_strFileName; };
+
+  float m_tran;	//added by inn
 
 protected:
   struct Character
@@ -167,6 +172,8 @@ protected:
   static int justification_word_weight;
 
   CStdString m_strFileName;
+
+  bool m_ChHasRended;	//added by inn
 
 private:
   int m_referenceCount;

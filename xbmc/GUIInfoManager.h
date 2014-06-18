@@ -184,6 +184,8 @@ namespace INFO
 #define SYSTEM_ISINHIBIT            184
 #define SYSTEM_HAS_SHUTDOWN         185
 #define SYSTEM_HAS_PVR              186
+#define SYSTEM_TWITTER				187	//TWITTER info
+
 
 #define NETWORK_IP_ADDRESS          190
 #define NETWORK_MAC_ADDRESS         191
@@ -814,6 +816,9 @@ public:
 
   /// \brief iterates through boolean conditions and compares their stored values to current values. Returns true if any condition changed value.
   bool ConditionsChangedValues(const std::map<int, bool>& map);
+  int m_debugFpsFlg;	  //added by inn
+
+  void SetTwitterInfo(CStdString str);
 protected:
   friend class INFO::InfoSingle;
   bool GetBool(int condition, int contextWindow = 0, const CGUIListItem *item=NULL);
@@ -833,6 +838,7 @@ protected:
     unsigned int num_params() const;
 
     CStdString name;
+
   private:
     std::vector<CStdString> params;
   };
@@ -920,6 +926,8 @@ protected:
   int m_libraryHasTVShows;
   int m_libraryHasMusicVideos;
   int m_libraryHasMovieSets;
+
+  CStdString m_TwitterText;
 
   CCriticalSection m_critInfo;
 };

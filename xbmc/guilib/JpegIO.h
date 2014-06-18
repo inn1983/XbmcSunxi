@@ -38,6 +38,7 @@ public:
   bool           Open(const CStdString& m_texturePath,  unsigned int minx=0, unsigned int miny=0, bool read=true);
   bool           Read(unsigned char* buffer, unsigned int bufSize, unsigned int minx, unsigned int miny);
   bool           Decode(const unsigned char *pixels, unsigned int pitch, unsigned int format);
+  bool 			 DecodeYUV(unsigned char **pixels, unsigned int pitch, unsigned int format);	//added by inn.Decode the jpeg to yuv.
   bool           CreateThumbnail(const CStdString& sourceFile, const CStdString& destFile, int minx, int miny, bool rotateExif);
   bool           CreateThumbnailFromMemory(unsigned char* buffer, unsigned int bufSize, const CStdString& destFile, unsigned int minx, unsigned int miny);
   bool           CreateThumbnailFromSurface(unsigned char* buffer, unsigned int width, unsigned int height, unsigned int format, unsigned int pitch, const CStdString& destFile);

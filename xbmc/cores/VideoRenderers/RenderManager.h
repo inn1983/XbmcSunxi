@@ -137,6 +137,8 @@ public:
 
   void RegisterRenderUpdateCallBack(const void *ctx, RenderUpdateCallBackFn fn);
 
+  void SetSizeManual(CStdString setsize);
+
 protected:
   void Render(bool clear, DWORD flags, DWORD alpha);
 
@@ -185,6 +187,8 @@ protected:
   int        m_presentsource;
   CEvent     m_presentevent;
   CEvent     m_flushEvent;
+
+  CStdString m_zoomSize;
 
 
   OVERLAY::CRenderer m_overlays;

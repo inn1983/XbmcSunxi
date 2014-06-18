@@ -43,12 +43,34 @@ public:
 
   virtual void Begin();
   virtual void End();
+  virtual void TelopBegin();	//added by inn
+  virtual void TelopEnd();	//added by inn
 
 protected:
   virtual CBaseTexture* ReallocTexture(unsigned int& newHeight);
   virtual bool CopyCharToTexture(FT_BitmapGlyph bitGlyph, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2);
   virtual void DeleteHardwareTexture();
 
+  float* m_model;
+  float* m_projection;
+
 };
+
+/* ESMatrix util. added by inn */ 
+
+typedef struct
+{
+    float   m[4][4];
+} ESMatrix;
+
+void
+esTranslate(ESMatrix *result, float tx, float ty, float tz);
+
+void
+esMatrixMultiply(ESMatrix *result, ESMatrix *srcA, ESMatrix *srcB);
+
+
+void
+esMatrixLoadIdentity(ESMatrix *result);
 
 #endif

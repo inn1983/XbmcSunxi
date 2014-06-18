@@ -254,6 +254,7 @@ bool CRenderSystemGLES::PresentRender(const CDirtyRegionList &dirty)
   if (!m_bRenderCreated)
     return false;
 
+#if 0	//added by inn
   if (m_iVSyncMode != 0 && m_iSwapRate != 0) 
   {
     int64_t curr, diff, freq;
@@ -271,13 +272,18 @@ bool CRenderSystemGLES::PresentRender(const CDirtyRegionList &dirty)
     /* sleep as close as we can before, assume 1ms precision of sleep *
      * this should always awake so that we are guaranteed the given   *
      * m_iSwapTime to do our swap                                     */
-    diff = (diff - m_iSwapTime) * 1000 / freq;
+    //diff = (diff - m_iSwapTime) * 1000 / freq;
+    diff = (m_iSwapTime - diff) * 1000 / freq;		//modify by inn
     if (diff > 0)
       Sleep((DWORD)diff);
   }
-  
+
+#endif
+
   bool result = PresentRenderImpl(dirty);
-  
+
+#if 0	//added by inn
+
   if (m_iVSyncMode && m_iSwapRate != 0)
   {
     int64_t curr, diff;
@@ -289,6 +295,7 @@ bool CRenderSystemGLES::PresentRender(const CDirtyRegionList &dirty)
     if (abs64(diff - m_iSwapRate) < abs64(diff))
       CLog::Log(LOGDEBUG, "%s - missed requested swap",__FUNCTION__);
   }
+#endif
   
   return result;
 }
@@ -313,9 +320,12 @@ void CRenderSystemGLES::SetVSync(bool enable)
   m_bVsyncInit   = true;
 
   SetVSyncImpl(enable);
-  
+
+
   if (!enable)
     return;
+
+#if 0
 
   if (g_advancedSettings.m_ForcedSwapTime != 0.0)
   {
@@ -327,6 +337,7 @@ void CRenderSystemGLES::SetVSync(bool enable)
       m_iSwapRate = 0;
     }
     else
+
     {
       int64_t freq;
       freq = CurrentHostFrequency();
@@ -337,12 +348,19 @@ void CRenderSystemGLES::SetVSync(bool enable)
       if(!m_iVSyncMode)
         m_iVSyncMode = 1;
     }
+
+
+
+
+ 
   }
+
     
   if (!m_iVSyncMode)
     CLog::Log(LOGERROR, "GLES: Vertical Blank Syncing unsupported");
   else
     CLog::Log(LOGINFO, "GLES: Selected vsync mode %d", m_iVSyncMode);
+#endif
 }
 
 void CRenderSystemGLES::CaptureStateBlock()
@@ -630,5 +648,15 @@ GLint CRenderSystemGLES::GUIShaderGetCoord1()
 
   return -1;
 }
+
+/* added by inn */
+GLint CRenderSystemGLES::GUIShaderGetModel()
+{
+  if (m_pGUIshader[m_method])
+    return m_pGUIshader[m_method]->GetCordModel();
+
+  return -1;
+}
+
 
 #endif

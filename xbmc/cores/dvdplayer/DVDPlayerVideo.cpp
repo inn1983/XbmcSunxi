@@ -312,7 +312,7 @@ void CDVDPlayerVideo::OnStartup()
 
   g_dvdPerformanceCounter.EnableVideoDecodePerformance(this);
 }
-
+int g_fpsdebug = 0;
 void CDVDPlayerVideo::Process()
 {
   CLog::Log(LOGNOTICE, "running thread: video_thread");
@@ -340,7 +340,7 @@ void CDVDPlayerVideo::Process()
 
     CDVDMsg* pMsg;
     MsgQueueReturnCode ret = m_messageQueue.Get(&pMsg, iQueueTimeOut, iPriority);
-
+	while (g_fpsdebug){Sleep(100);}	//debug
     if (MSGQ_IS_ERROR(ret) || ret == MSGQ_ABORT)
     {
       CLog::Log(LOGERROR, "Got MSGQ_ABORT or MSGO_IS_ERROR return true");

@@ -44,7 +44,7 @@ public:
   CSlideShowPic();
   ~CSlideShowPic();
 
-  void SetTexture(int iSlideNumber, CBaseTexture* pTexture, DISPLAY_EFFECT dispEffect = EFFECT_RANDOM, TRANSISTION_EFFECT transEffect = FADEIN_FADEOUT);
+  void SetTexture(int iSlideNumber, CBaseTexture* pTexture, DISPLAY_EFFECT dispEffect = EFFECT_RANDOM, TRANSISTION_EFFECT transEffect = FADEIN_FADEOUT, int zoomWidth=1920, int zoomHight=1080);
   void UpdateTexture(CBaseTexture* pTexture);
 
   bool IsLoaded() const { return m_bIsLoaded;};
@@ -52,6 +52,7 @@ public:
   void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
   void Render();
   void Close();
+  void CloseNoDel();	//added by inn. do not delete the m_pImage
   bool IsFinished() const { return m_bIsFinished;};
   bool DrawNextImage() const { return m_bDrawNextImage;};
 
@@ -76,6 +77,7 @@ public:
 
   void Move(float dX, float dY);
   float GetZoom() const { return m_fZoomAmount;};
+  void RenderA10();	//for A10DISP
 
   bool m_bIsComic;
   bool m_bCanMoveHorizontally;
@@ -124,6 +126,10 @@ private:
   bool m_bNoEffect;
   bool m_bFullSize;
   bool m_bTransistionImmediately;
+  uint32_t m_ImageUpdateCmd;
+  int m_zoomWidth;
+  int m_zoomHight;
+  //cedarv_picture_t m_cedarpic;
 
   CCriticalSection m_textureAccess;
 };

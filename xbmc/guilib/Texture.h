@@ -56,7 +56,7 @@ public:
    \return a CBaseTexture pointer to the created texture - NULL if the texture failed to load.
    */
   static CBaseTexture *LoadFromFile(const CStdString& texturePath, unsigned int idealWidth = 0, unsigned int idealHeight = 0,
-                                    bool autoRotate = false);
+                                    bool autoRotate = false, bool bA10disp = false);
 
   /*! \brief Load a texture from a file in memory
    Loads a texture from a file in memory, restricting in size if needed based on maxHeight and maxWidth.
@@ -75,7 +75,6 @@ public:
   bool LoadPaletted(unsigned int width, unsigned int height, unsigned int pitch, unsigned int format, const unsigned char *pixels, const COLOR *palette);
 
   bool HasAlpha() const;
-
   virtual void CreateTextureObject() = 0;
   virtual void DestroyTextureObject() = 0;
   virtual void LoadToGPU() = 0;
@@ -97,11 +96,19 @@ public:
   void SetOrientation(int orientation) { m_orientation = orientation; }
 
   void Update(unsigned int width, unsigned int height, unsigned int pitch, unsigned int format, const unsigned char *pixels, bool loadToGPU);
-  void Allocate(unsigned int width, unsigned int height, unsigned int format);
+  virtual void Allocate(unsigned int width, unsigned int height, unsigned int format);
   void ClampToEdge();
 
   static unsigned int PadPow2(unsigned int x);
   bool SwapBlueRed(unsigned char *pixels, unsigned int height, unsigned int pitch, unsigned int elements = 4, unsigned int offset=0);
+  virtual unsigned char* GetPixelY(){return m_pixelsY;}
+  virtual unsigned char* GetPixelUV(){return m_pixelsUV;}
+  
+  virtual uint32_t GetPixelYphys()=0;
+  virtual uint32_t GetPixelUVphys()=0;
+  
+  int GetColor(){return m_color;}
+
 
 private:
   // no copy constructor
@@ -110,7 +117,8 @@ private:
 protected:
   bool LoadFromFileInMem(unsigned char* buffer, size_t size, const std::string& mimeType,
                          unsigned int maxWidth, unsigned int maxHeight);
-  bool LoadFromFileInternal(const CStdString& texturePath, unsigned int maxWidth, unsigned int maxHeight, bool autoRotate);
+  virtual bool LoadFromFileInternal(const CStdString& texturePath, unsigned int maxWidth, unsigned int maxHeight, bool autoRotate);
+  bool LoadFromFileInternalYUV(const CStdString& texturePath, unsigned int maxWidth, unsigned int maxHeight, bool autoRotate);
   void LoadFromImage(ImageInfo &image, bool autoRotate = false);
   // helpers for computation of texture parameters for compressed textures
   unsigned int GetPitch(unsigned int width) const;
@@ -125,6 +133,12 @@ protected:
   unsigned int m_originalHeight;  ///< original image height before scaling or cropping
 
   unsigned char* m_pixels;
+  unsigned char* m_pixelsY;		//for  A10DISP YUV
+  unsigned char* m_pixelsU;		//for  A10DISP YUV
+  unsigned char* m_pixelsV;		//for  A10DISP YUV
+  unsigned char* m_pixelsUV;
+  unsigned char* m_pixelsYUV[2];	//for  A10DISP YUV
+  int m_color;
   bool m_loadedToGPU;
   unsigned int m_format;
   int m_orientation;
@@ -138,3 +152,6 @@ protected:
 #include "TextureDX.h"
 #define CTexture CDXTexture
 #endif
+
+#include "TextureA10.h"
+

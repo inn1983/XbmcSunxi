@@ -40,6 +40,18 @@
 #include "xbmc/cores/omxplayer/OMXImage.h"
 #endif
 
+#ifndef A10DISP
+#define A10DISP
+#endif
+
+extern "C" {
+#include <libcedarv.h>
+#include <avheap.h>
+#ifndef CEDARV_FRAME_HAS_PHY_ADDR
+#include <os_adapter.h>
+#endif
+}
+
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
@@ -47,6 +59,10 @@ CBaseTexture::CBaseTexture(unsigned int width, unsigned int height, unsigned int
  : m_hasAlpha( true )
 {
   m_pixels = NULL;
+  m_pixelsY = NULL;
+  m_pixelsU = NULL;
+  m_pixelsV = NULL;
+  m_pixelsUV = NULL;
   m_loadedToGPU = false;
   Allocate(width, height, format);
 }
@@ -56,7 +72,8 @@ CBaseTexture::~CBaseTexture()
   delete[] m_pixels;
 }
 
-void CBaseTexture::Allocate(unsigned int width, unsigned int height, unsigned int format)
+//Allocate() will be callde in the Constructor of base class !!
+void CBaseTexture::Allocate(unsigned int width, unsigned int height, unsigned int format)	
 {
   m_imageWidth = m_originalWidth = width;
   m_imageHeight = m_originalHeight = height;
@@ -99,6 +116,19 @@ void CBaseTexture::Allocate(unsigned int width, unsigned int height, unsigned in
   CLAMP(m_imageHeight, m_textureHeight);
   delete[] m_pixels;
   m_pixels = new unsigned char[GetPitch() * GetRows()];
+  //delete[] m_pixelsY;
+  //m_pixelsY = new unsigned char[GetPitch() * GetRows()];
+  /*
+  av_heap_free(m_pixelsY);
+  m_pixelsY = (unsigned char*)av_heap_alloc(GetPitch() * GetRows());
+  av_heap_free(m_pixelsU);
+  m_pixelsU= (unsigned char*)av_heap_alloc(GetPitch() * GetRows());
+  av_heap_free(m_pixelsV);
+  m_pixelsV = (unsigned char*)av_heap_alloc(GetPitch() * GetRows());
+  m_pixelsYUV[0] = m_pixelsY;
+  m_pixelsYUV[1] = m_pixelsU;
+  m_pixelsYUV[2] = m_pixelsV;
+  */
 }
 
 void CBaseTexture::Update(unsigned int width, unsigned int height, unsigned int pitch, unsigned int format, const unsigned char *pixels, bool loadToGPU)
@@ -170,7 +200,7 @@ void CBaseTexture::ClampToEdge()
   }
 }
 
-CBaseTexture *CBaseTexture::LoadFromFile(const CStdString& texturePath, unsigned int idealWidth, unsigned int idealHeight, bool autoRotate)
+CBaseTexture *CBaseTexture::LoadFromFile(const CStdString& texturePath, unsigned int idealWidth, unsigned int idealHeight, bool autoRotate, bool bA10disp /*=flase*/)
 {
 #if defined(TARGET_ANDROID)
   CURL url(texturePath);
@@ -197,11 +227,19 @@ CBaseTexture *CBaseTexture::LoadFromFile(const CStdString& texturePath, unsigned
     }
   }
 #endif
-  CTexture *texture = new CTexture();
+  CBaseTexture *texture;
+  if (!bA10disp){
+	texture = new CTexture();
+  }
+  else{
+	texture = new CA10Texture();
+  }
+
   if (texture->LoadFromFileInternal(texturePath, idealWidth, idealHeight, autoRotate))
-    return texture;
-  delete texture;
-  return NULL;
+	return texture;
+
+   delete texture;
+   return NULL;
 }
 
 CBaseTexture *CBaseTexture::LoadFromFileInMemory(unsigned char *buffer, size_t bufferSize, const std::string &mimeType, unsigned int idealWidth, unsigned int idealHeight)
@@ -338,6 +376,43 @@ bool CBaseTexture::LoadFromFileInternal(const CStdString& texturePath, unsigned 
 
   return true;
 }
+
+bool CBaseTexture::LoadFromFileInternalYUV(const CStdString& texturePath, unsigned int maxWidth, unsigned int maxHeight, bool autoRotate)
+{
+  if (URIUtils::GetExtension(texturePath).Equals(".dds"))
+  { // special case for DDS images
+    CDDSImage image;
+    if (image.ReadFile(texturePath))
+    {
+      Update(image.GetWidth(), image.GetHeight(), 0, image.GetFormat(), image.GetData(), false);
+      return true;
+    }
+    return false;
+  }
+
+  //ImageLib is sooo sloow for jpegs. Try our own decoder first. If it fails, fall back to ImageLib.
+  CStdString Ext = URIUtils::GetExtension(texturePath);
+  Ext.ToLower(); // Ignore case of the extension
+  if (Ext.Equals(".jpg") || Ext.Equals(".jpeg") || Ext.Equals(".tbn"))
+  {
+    CJpegIO jpegfile;
+    if (jpegfile.Open(texturePath, maxWidth, maxHeight))
+    {
+      if (jpegfile.Width() > 0 && jpegfile.Height() > 0)
+      {
+
+		Allocate(jpegfile.Width(), jpegfile.Height(), XB_FMT_YUV); //XB_FMT_YUV
+		if (jpegfile.DecodeYUV(m_pixelsYUV, GetPitch(), XB_FMT_YUV) )
+		{
+		  ClampToEdge();
+		  return true;
+		}
+      }
+    }
+    CLog::Log(LOGDEBUG, "%s - Load of %s failed. Falling back to ImageLib", __FUNCTION__, texturePath.c_str());
+  }
+}
+
 
 bool CBaseTexture::LoadFromFileInMem(unsigned char* buffer, size_t size, const std::string& mimeType, unsigned int maxWidth, unsigned int maxHeight)
 {
@@ -510,6 +585,8 @@ unsigned int CBaseTexture::GetPitch(unsigned int width) const
     return width;
   case XB_FMT_RGB8:
     return (((width + 1)* 3 / 4) * 4);
+  case XB_FMT_YUV:
+  	return (((width + 1) / 4) * 4);
   case XB_FMT_RGBA8:
   case XB_FMT_A8R8G8B8:
   default:
@@ -553,3 +630,5 @@ bool CBaseTexture::HasAlpha() const
 {
   return m_hasAlpha;
 }
+
+

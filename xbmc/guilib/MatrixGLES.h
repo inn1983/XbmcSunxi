@@ -35,7 +35,8 @@ class CMatrixGLES
 public:
   CMatrixGLES();
   ~CMatrixGLES();
-  
+
+  void SetMatrix(EMATRIXMODE mode, float* matrix);	//added by inn
   GLfloat* GetMatrix(EMATRIXMODE mode);
 
   void MatrixMode(EMATRIXMODE mode);

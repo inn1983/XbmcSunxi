@@ -107,7 +107,7 @@ CXBMCRenderManager::CXBMCRenderManager()
   m_bReconfigured = false;
   m_hasCaptures = false;
   m_displayLatency = 0.0f;
-  m_zoomSize = "";
+  m_ZoomSize = "";
 }
 
 CXBMCRenderManager::~CXBMCRenderManager()
@@ -316,6 +316,7 @@ void CXBMCRenderManager::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
 
   m_presentevent.Set();
 }
+
 
 void CXBMCRenderManager::SetSizeManual(CStdString setsize)
 {
@@ -705,7 +706,8 @@ void CXBMCRenderManager::Present()
   Render(true, 0, 255);
 
   /* wait for this present to be valid */
-  if(g_graphicsContext.IsFullScreenVideo())
+
+  if(g_graphicsContext.IsFullScreenVideo() && g_debugFpsWait)
     WaitPresentTime(m_presenttime);
  
   m_presentevent.Set();

@@ -32,6 +32,10 @@
 #endif
 #include <math.h>
 
+#ifdef ALLWINNERA10
+#include "cores/VideoRenderers/LinuxRendererA10.h"
+#endif
+
 using namespace std;
 
 #define IMMEDIATE_TRANSISTION_TIME          20
@@ -45,6 +49,10 @@ using namespace std;
 
 static float zoomamount[10] = { 1.0f, 1.2f, 1.5f, 2.0f, 2.8f, 4.0f, 6.0f, 9.0f, 13.5f, 20.0f };
 
+#ifndef A10DISP
+#define A10DISP
+#endif
+
 CSlideShowPic::CSlideShowPic()
 {
   m_pImage = NULL;
@@ -52,6 +60,9 @@ CSlideShowPic::CSlideShowPic()
   m_bIsFinished = false;
   m_bDrawNextImage = false;
   m_bTransistionImmediately = false;
+  m_ImageUpdateCmd = 0x0;
+
+  //memset(&m_cedarpic, 0, sizeof(cedarv_picture_t));
 }
 
 CSlideShowPic::~CSlideShowPic()
@@ -74,10 +85,24 @@ void CSlideShowPic::Close()
   m_bIsDirty = true;
 }
 
-void CSlideShowPic::SetTexture(int iSlideNumber, CBaseTexture* pTexture, DISPLAY_EFFECT dispEffect, TRANSISTION_EFFECT transEffect)
+void CSlideShowPic::CloseNoDel()
 {
   CSingleLock lock(m_textureAccess);
-  Close();
+  if (m_pImage)
+  {
+    m_pImage = NULL;
+  }
+  m_bIsLoaded = false;
+  m_bIsFinished = false;
+  m_bDrawNextImage = false;
+  m_bTransistionImmediately = false;
+  m_bIsDirty = true;
+}
+
+void CSlideShowPic::SetTexture(int iSlideNumber, CBaseTexture* pTexture, DISPLAY_EFFECT dispEffect, TRANSISTION_EFFECT transEffect, int zoomWidth, int zoomHight)
+{
+  CSingleLock lock(m_textureAccess);
+  Close();	
   m_bPause = false;
   m_bNoEffect = false;
   m_bTransistionImmediately = false;
@@ -183,6 +208,9 @@ void CSlideShowPic::SetTexture(int iSlideNumber, CBaseTexture* pTexture, DISPLAY
   m_bIsFinished = false;
   m_bDrawNextImage = false;
   m_bIsLoaded = true;
+  m_ImageUpdateCmd |= 0x1;	//bit1:display init
+  m_zoomHight = zoomHight;
+  m_zoomWidth = zoomWidth;
   return ;
 }
 
@@ -358,7 +386,7 @@ void CSlideShowPic::Process(unsigned int currentTime, CDirtyRegionList &dirtyreg
   if (m_iCounter >= m_transistionEnd.start)
   { // do end transistion
 //    CLog::Log(LOGDEBUG,"Transistioning");
-    m_bDrawNextImage = true;
+    //m_bDrawNextImage = true;	//removed by inn
     if (m_transistionEnd.type == CROSSFADE)
     { // fade out at 1x speed
       alpha = 255 - (color_t)((float)(m_iCounter - m_transistionEnd.start) / (float)m_transistionEnd.length * 255.0f);
@@ -377,6 +405,8 @@ void CSlideShowPic::Process(unsigned int currentTime, CDirtyRegionList &dirtyreg
   {
     m_alpha = alpha;
     m_bIsDirty = true;
+	//m_bImageUpdate = true;
+	m_ImageUpdateCmd |= 0x2;	//bit2:set alpha
   }
   if (m_displayEffect != EFFECT_NO_TIMEOUT || m_iCounter < m_transistionStart.length || m_iCounter >= m_transistionEnd.start || (m_iCounter >= m_transistionTemp.start && m_iCounter < m_transistionTemp.start + m_transistionTemp.length))
   {
@@ -702,7 +732,6 @@ void CSlideShowPic::Move(float fDeltaX, float fDeltaY)
 void CSlideShowPic::Render()
 {
   CSingleLock lock(m_textureAccess);
-
   Render(m_ax, m_ay, m_pImage, (m_alpha << 24) | 0xFFFFFF);
 
   // now render the image in the top right corner if we're zooming
@@ -901,3 +930,23 @@ void CSlideShowPic::Render(float *x, float *y, CBaseTexture* pTexture, color_t c
   g_Windowing.BlitToScreen(m_pImage, NULL, NULL);
 #endif
 }
+
+
+void CSlideShowPic::RenderA10()
+{ 
+	//pthread_mutex_lock(&g_dispq_mutex);
+
+	glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(1.0/255, 2.0/255, 3.0/255, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(0, 0, 0, 0);
+	A10disp_set_para(m_pImage->GetPixelYphys(), m_pImage->GetPixelUVphys(), 
+					 m_pImage->GetColor(), m_pImage->GetWidth(), m_pImage->GetHeight(),
+					 0, 0, m_zoomWidth, m_zoomHight, (uint16_t)m_alpha, m_ImageUpdateCmd);
+	m_ImageUpdateCmd = 0x0;
+	
+	//pthread_mutex_unlock(&g_dispq_mutex);
+	
+}
+

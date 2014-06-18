@@ -38,6 +38,7 @@
 #define XB_FMT_A8         32
 #define XB_FMT_RGBA8      64
 #define XB_FMT_RGB8      128
+#define XB_FMT_YUV       256 //for A10DISP
 #define XB_FMT_OPAQUE  65536
 
 class CXBTFFrame

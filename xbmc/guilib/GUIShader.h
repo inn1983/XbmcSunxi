@@ -39,6 +39,9 @@ public:
   GLint GetColLoc()   { return m_hCol;   }
   GLint GetCord0Loc() { return m_hCord0; }
   GLint GetCord1Loc() { return m_hCord1; }
+
+  //added by inn
+  GLint GetCordModel() { return m_hModel; }
   
 protected:
   GLint m_hTex0;
