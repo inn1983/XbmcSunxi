@@ -22,6 +22,7 @@ all: .installed
 .git:
 		git clone $(MALIGIT)
 	(	cd $(SUNXI-MALI) &&\
+		git checkout 997139453d869b4dc2e7507b6a78f27d7f191e28 &&\
 		git submodule init &&\
 		git submodule update \
 	)
