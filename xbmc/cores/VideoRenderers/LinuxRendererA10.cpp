@@ -1913,61 +1913,10 @@ int A10VLDisplayPicture(cedarv_picture_t &picture,
 /* 
 fix blueishness by setting hue and saturation
 of the GL Layer
-http://forum.xbmc.org/showthread.php?tid=126995&page=146 
+http://forum.xbmc.org/showthread.php?tid=126995&page=146
+2014.6.19 removed
 */
-    #define NEUTRAL_HUE 20
-	#define NEUTRAL_SATURATION 32
 
-	args[0] = g_screenid;
-	args[1] = g_hlayer;
-	args[2] = 0;
-	args[3] = 0;
-	int hue=0;
-	hue = ioctl(g_hdisp, DISP_CMD_LAYER_GET_HUE, args);
-	// CLog::Log(LOGDEBUG, "A10: layer hue is %d.\n", hue );
-
-	// setting hue and saturation for this layer
-	// to prevent blue tainted screen
-	if ( hue != NEUTRAL_HUE )
-	{
-		args[0] = g_screenid;
-		args[1] = g_hlayer;
-		args[2] = NEUTRAL_HUE;
-		args[3] = 0;
-		if ( ioctl(g_hdisp, DISP_CMD_LAYER_SET_HUE, args) < 0 )
-		{
-			CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_SET_HUE failed.\n");
-		}
-		else
-		{
-			CLog::Log(LOGDEBUG, "A10: set hue to : %d\n", NEUTRAL_HUE);
-		}
-	}
-
-	args[0] = g_screenid;
-	args[1] = g_hlayer;
-	args[2] = 0;
-	args[3] = 0;
-	int sat = 0;
-	sat = ioctl(g_hdisp, DISP_CMD_LAYER_GET_SATURATION, args);
-	// CLog::Log(LOGDEBUG, "A10: layer saturation is %d.\n", sat );
-
-	if ( sat != NEUTRAL_SATURATION )
-	{
-		args[0] = g_screenid;
-		args[1] = g_hlayer;
-		args[2] = NEUTRAL_SATURATION;
-		args[3] = 0;
-		if ( ioctl(g_hdisp, DISP_CMD_LAYER_SET_SATURATION, args) < 0 )
-		{
-			CLog::Log(LOGERROR, "A10: DISP_CMD_LAYER_SET_SATURATION failed.\n");
-		}
-		else
-		{
-			CLog::Log(LOGDEBUG, "A10: set saturation to : %d\n", NEUTRAL_SATURATION);
-		}
-	}
-//2013.3.24 added by inn end 
 
     if ((g_height > 720) && (getenv("A10AB") == NULL))
     {
