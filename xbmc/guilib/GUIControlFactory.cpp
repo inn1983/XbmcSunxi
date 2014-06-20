@@ -1326,6 +1326,7 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
   {
     control = new CGUIVisualisationControl(parentID, id, posX, posY, width, height);
   }
+#if 0
   else if (type == CGUIControl::GUICONTROL_TELOP)
   {
   	const CGUIInfoLabel &content = (infoLabels.size()) ? infoLabels[0] : CGUIInfoLabel("");
@@ -1336,7 +1337,7 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
     ((CGUITelopControl *)control)->SetWidthControl(minWidth, bScrollLabel);
 
   }
-
+#endif
   // things that apply to all controls
   if (control)
   {

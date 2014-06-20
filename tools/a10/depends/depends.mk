@@ -9,7 +9,7 @@
 
 #your home dir
 #HOME=$(shell echo ~)
-HOME=/opt/a10hacking
+HOME=/home/inn
 #where your tarballs go
 TARBALLS=$(HOME)/xbmctmp/tarballs
 #whether to compile for armhf
@@ -53,11 +53,11 @@ else
 #
 
 #where is your arm rootfs
-SDKSTAGE=$(HOME)/rootfs/debrootfs
+SDKSTAGE=$(HOME)/mnt/lnxwkdir/CubianZ/rootfs.wk/argon-armfs
 #where is your xbmc install root 
 XBMCPREFIX=/allwinner/xbmc-pvr-bin$(HF)
 #where is your toolchain
-TOOLCHAIN=/usr/arm-linux-gnueabi$(HF)
+TOOLCHAIN=$(HOME)/mnt/lnxwkdir/
 
 JOBS=4
 export HOST=arm-linux-gnueabi$(HF)

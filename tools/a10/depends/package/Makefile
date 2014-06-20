@@ -22,7 +22,8 @@ $(TARBALL1): root/DEBIAN/control $(XBMCPREFIX)/lib/xbmc/xbmc.bin README
 	)
 	dpkg -b tmp $(DEB)
 	tar cvzf $(TARBALL1) README $(DEB)
-	rm -r tmp $(DEB)
+	#rm -r tmp $(DEB)
+	rm -r tmp
 
 tarball: $(XBMCPREFIX)/lib/xbmc/xbmc.bin
 	(	rm -rf tmp &&\
