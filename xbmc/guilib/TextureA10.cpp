@@ -29,6 +29,8 @@
 #include <fcntl.h>
 #include <stropts.h>
 #include <sys/mman.h>
+#include "URL.h"
+#include "filesystem/SpecialProtocol.h"
 
 #include "cores/VideoRenderers/LinuxRendererA10.h"
 
@@ -110,7 +112,9 @@ bool CA10Texture::LoadFromFileInternal(const CStdString& texturePath, unsigned i
 	struct stat s;
 	uint8_t *data;
 	int ret = 0;
-  	in = open(texturePath, O_RDONLY);
+	CURL url(texturePath);
+	CStdString filepath = CSpecialProtocol::TranslatePath(url);
+  	in = open(filepath, O_RDONLY);
 	fstat(in, &s);
 	data = (uint8_t*)mmap(NULL, s.st_size, PROT_READ, MAP_SHARED, in, 0);
 

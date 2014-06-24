@@ -2,9 +2,9 @@ include ../depends.mk
 
 LCLPREFIX=$(shell echo $(XBMCPREFIX) | sed 's/^\///g')
 
-DEB=xbmca10.deb
-TARBALL1=xbmca10deb.tar.gz
-TARBALL2_PFX=xbmca10_
+DEB=xbmc-sunxi.deb
+TARBALL1=xbmc-sunxideb.tar.gz
+TARBALL2_PFX=xbmcsunxi_
 TARBALL2_SFX=tar.bz2
 
 all: $(TARBALL1)
