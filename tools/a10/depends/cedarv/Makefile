@@ -1,7 +1,8 @@
 include ../depends.mk
 
 TARBALL=cedarx-libs.tar.gz
-URL=https://github.com/linux-sunxi/cedarx-libs/tarball/master
+#URL=https://github.com/linux-sunxi/cedarx-libs/tarball/master
+URL=https://github.com/patricius972/cedarx-libs/tarball/01367e28164bce0aaae1c88cb6a44e8cf38bc787
 
 ifeq ($(USEARMHF), 1)
 LIBVERSION=linux-armhf
@@ -44,7 +45,8 @@ $(TARGET) : .extracted $(OBJS)
 	mkdir -p tmp
 	( cd tmp &&\
 	  tar xvfz $(TARBALLS)/$(TARBALL) &&\
-	  cd *cedarx-libs*/libcedarv/$(LIBVERSION) &&\
+	  #cd *cedarx-libs*/libcedarv/$(LIBVERSION) &&\
+	  cd patricius972-*/libcedarv/$(LIBVERSION) &&\
 	  rm -f Makefile .gitignore cedardefs.mk &&\
 	  rm -rf sample &&\
 	  mv * ../../../../ \

@@ -36,6 +36,13 @@
 
 extern "C" {
 #include <libcedarv.h>
+//data type for drv_display_sun4i.h
+#define __s32	int
+#define __u32	unsigned int
+#define __u8	unsigned char
+#define __s8	char
+#define __s16	short
+#define __u16	unsigned short
 #include <drv_display_sun4i.h>
 #ifndef CEDARV_FRAME_HAS_PHY_ADDR
 #include <os_adapter.h>

@@ -3,7 +3,7 @@ Priority: optional
 Maintainer: inn 
 Package: xbmc-sunxi
 Architecture: armhf
-Version: 0.0.2-alpha
+Version: 0.0.3-alpha
 Depends: mesa-utils,
  ttf-liberation,
  ttf-dejavu-core,
